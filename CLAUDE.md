@@ -101,6 +101,11 @@ Target: **stable iced 0.14** (`iced_layershell` 0.19.x tracks it). No zbus in th
 - Never bump versions in Cargo.toml or edit CHANGELOG.md files by hand — the release-plz
   release PR does both, per crate, only for crates that changed. Config lives in
   `release-plz.toml`; the workflow is `.github/workflows/release-plz.yml`.
+- release-plz runs in `git_only` mode (versions come from git tags, not crates.io) and
+  runs `cargo package --workspace` at the last tag — so every workspace path dependency
+  must carry a `version` alongside its `path` (a new exporter crate depending on
+  `saola-tokens` by path alone would poison the next tag and break every release-pr run
+  after it; see commit 957ee68).
 - Commits that shouldn't appear in a changelog use `chore:`/`ci:`/`docs:`/`test:` types.
 
 ## Boundaries
