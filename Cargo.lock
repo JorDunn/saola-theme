@@ -2481,6 +2481,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "saola-export-alacritty"
+version = "0.1.0"
+dependencies = [
+ "saola-tokens",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "saola-theme"
 version = "0.3.0"
 dependencies = [

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/saola-tokens", "crates/saola-theme"]
+members = ["crates/saola-tokens", "crates/saola-theme", "crates/saola-export-alacritty"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
