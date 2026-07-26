@@ -1,0 +1,84 @@
+# Saola — Alacritty colours
+# Drop in ~/.config/alacritty/ and reference from alacritty.toml:
+#   general.import = ["~/.config/alacritty/saola.toml"]
+#
+# Terracotta (#C67139) is deliberately NOT one of the sixteen. It stays the shell
+# accent so the prompt can use it to mean "you are here". Slot 1 is a warm brick.
+
+[colors.primary]
+background = "#0C0A00"
+foreground = "#E8E0CE"
+dim_foreground = "#A79E8C"
+
+[colors.cursor]
+cursor = "#FFFFF0"
+text   = "#0C0A00"
+
+[colors.vi_mode_cursor]
+cursor = "#C67139"
+text   = "#FFFFF0"
+
+[colors.selection]
+background = "#C67139"
+text       = "#FFFFF0"
+
+[colors.search.matches]
+background = "#C69139"
+foreground = "#0C0A00"
+
+[colors.search.focused_match]
+background = "#C67139"
+foreground = "#FFFFF0"
+
+[colors.footer_bar]
+background = "#0C0A00"
+foreground = "#E8E0CE"
+
+[colors.hints.start]
+background = "#C67139"
+foreground = "#FFFFF0"
+
+[colors.hints.end]
+background = "#3A342A"
+foreground = "#E8E0CE"
+
+[colors.normal]
+black   = "#0C0A00"
+red     = "#C05B3C"
+green   = "#7A8A5E"
+yellow  = "#C69139"
+blue    = "#5E7A8A"
+magenta = "#9E6B7A"
+cyan    = "#6E9188"
+white   = "#E8E0CE"
+
+[colors.bright]
+black   = "#3A342A"
+red     = "#E07A57"
+green   = "#9CB077"
+yellow  = "#E0B25C"
+blue    = "#7C9CAE"
+magenta = "#C08A99"
+cyan    = "#8FB3A8"
+white   = "#FFFFF0"
+
+[font]
+size = 12.0
+
+[font.normal]
+family = "IBM Plex Mono"
+style  = "Regular"
+
+[font.bold]
+family = "IBM Plex Mono"
+style  = "SemiBold"
+
+[font.italic]
+family = "IBM Plex Mono"
+style  = "Italic"
+
+[window]
+opacity  = 1.0
+padding  = { x = 16, y = 14 }
+decorations = "None"          # niri draws the border
+dynamic_padding = true

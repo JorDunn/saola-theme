@@ -1,0 +1,156 @@
+{
+  "$schema": "https://saola.dev/tokens.schema.json",
+  "name": "Saola",
+  "version": "0.1.0",
+  "description": "Design tokens for the Saola desktop environment. Ivory = off, terracotta = on, ink = surface.",
+
+  "color": {
+    "ink": "#0C0A00",
+    "paper": "#FFFFF0",
+    "accent": "#C67139",
+    "accentLight": "#F6A06B",
+    "accentDark": "#8C491A",
+
+    "onInk": {
+      "primary": "rgba(255,255,240,1.00)",
+      "secondary": "rgba(255,255,240,0.72)",
+      "tertiary": "rgba(255,255,240,0.55)",
+      "quaternary": "rgba(255,255,240,0.40)",
+      "disabled": "rgba(255,255,240,0.35)",
+      "divider": "rgba(255,255,240,0.12)",
+      "fillSubtle": "rgba(255,255,240,0.07)",
+      "fill": "rgba(255,255,240,0.12)",
+      "fillStrong": "rgba(255,255,240,0.16)"
+    },
+
+    "onPaper": {
+      "primary": "rgba(12,10,0,1.00)",
+      "secondary": "rgba(12,10,0,0.70)",
+      "tertiary": "rgba(12,10,0,0.55)",
+      "quaternary": "rgba(12,10,0,0.45)",
+      "disabled": "rgba(12,10,0,0.35)",
+      "divider": "rgba(12,10,0,0.10)",
+      "fillSubtle": "rgba(12,10,0,0.04)",
+      "fill": "rgba(12,10,0,0.08)",
+      "track": "rgba(12,10,0,0.14)"
+    },
+
+    "scrim": {
+      "boot": "rgba(12,10,0,0.78)",
+      "shutdown": "rgba(12,10,0,0.88)",
+      "lockAwake": "rgba(12,10,0,0.62)",
+      "launcher": "rgba(12,10,0,0.52)",
+      "overview": "rgba(12,10,0,0.55)",
+      "capture": "rgba(12,10,0,0.62)",
+      "modal": "rgba(12,10,0,0.62)",
+      "translucentPanel": "rgba(12,10,0,0.60)"
+    }
+  },
+
+  "font": {
+    "ui": "IBM Plex Sans",
+    "display": "IBM Plex Serif",
+    "mono": "IBM Plex Mono",
+    "weight": { "regular": 400, "medium": 500, "display": 400 },
+    "size": {
+      "lockClock": 168,
+      "screenTitle": 44,
+      "panelHeading": 22,
+      "dialogTitle": 24,
+      "sectionHeading": 20,
+      "launcherInput": 22,
+      "body": 13.5,
+      "bar": 13,
+      "secondary": 12.5,
+      "meta": 12,
+      "label": 11,
+      "keycap": 11
+    },
+    "minimumBarSize": 13,
+    "tabularNumerals": ["clock", "percentage", "timer", "countdown", "size", "duration"]
+  },
+
+  "radius": {
+    "pill": 999,
+    "popover": 30,
+    "popoverWide": 34,
+    "window": 24,
+    "card": 26,
+    "inset": 20,
+    "tile": 13,
+    "checkbox": 7,
+    "selection": 6
+  },
+
+  "size": {
+    "panelPill": 40,
+    "panelBar": 48,
+    "panelMarginIslands": 26,
+    "panelMarginLedger": 20,
+    "islandGap": 10,
+    "popoverTop": 72,
+    "popoverWidth": 440,
+    "notificationCentreWidth": 460,
+    "launcherWidth": 640,
+    "notificationCardWidth": 440,
+    "hitTargetBar": 40,
+    "hitTargetTouch": 44,
+    "iconBar": 15,
+    "iconRow": 16,
+    "iconMenu": 19,
+    "iconBare": 32,
+    "iconStrokeWidth": 2.75,
+    "windowBorder": 2,
+    "windowHeader": 46
+  },
+
+  "shadow": {
+    "popover": "0 18px 48px rgba(12,10,0,0.50)",
+    "window": "0 24px 64px rgba(12,10,0,0.50)",
+    "overlay": "0 24px 64px rgba(12,10,0,0.60)"
+  },
+
+  "motion": {
+    "hover": { "duration": 140, "easing": "ease" },
+    "popover": { "duration": 160, "easing": "ease-out", "from": "translateY(-6px) scale(0.985)" },
+    "wake": { "duration": 450, "easing": "ease" },
+    "progress": { "duration": 1000, "easing": "linear" },
+    "bootRule": { "duration": 1800, "easing": "ease-in-out", "loop": true },
+    "notification": {
+      "slideIn": { "duration": 350, "easing": "ease-out", "from": "translateX(120%)" },
+      "idle": { "duration": 5000 },
+      "fadeOut": { "duration": 1000, "easing": "linear", "translate": false },
+      "total": 6350,
+      "maxStack": 3,
+      "pauseOnHover": true,
+      "urgentAutoDismiss": false
+    }
+  },
+
+  "terminal": {
+    "background": "#0C0A00",
+    "foreground": "#E8E0CE",
+    "cursor": "#FFFFF0",
+    "cursorText": "#0C0A00",
+    "selection": "#C67139",
+    "normal": {
+      "black": "#0C0A00", "red": "#C05B3C", "green": "#7A8A5E", "yellow": "#C69139",
+      "blue": "#5E7A8A", "magenta": "#9E6B7A", "cyan": "#6E9188", "white": "#E8E0CE"
+    },
+    "bright": {
+      "black": "#3A342A", "red": "#E07A57", "green": "#9CB077", "yellow": "#E0B25C",
+      "blue": "#7C9CAE", "magenta": "#C08A99", "cyan": "#8FB3A8", "white": "#FFFFF0"
+    }
+  },
+
+  "mark": {
+    "default": "builtin:horns",
+    "builtin": {
+      "horns": ["M9 21c0-7-1.2-12-3-18", "M15 21c0-7 1.2-12 3-18"],
+      "notch": ["M18.4 6.3a8 8 0 1 0 1.3 3.1"]
+    },
+    "viewBox": "0 0 24 24",
+    "strokeWidth": 2.75,
+    "sizes": { "bar": 16, "boot": 46, "splash": 76, "lock": 112 }
+  }
+}

@@ -1,0 +1,151 @@
+name = "Saola"
+
+[palette]
+ink = "#0c0a00"
+paper = "#fffff0"
+accent = "#c67139"
+accent_light = "#f6a06b"
+accent_dark = "#8c491a"
+
+[on_ink]
+primary = "#fffff0"
+secondary = "#fffff0b8"
+tertiary = "#fffff08c"
+quaternary = "#fffff066"
+disabled = "#fffff059"
+divider = "#fffff01f"
+fill_subtle = "#fffff012"
+fill = "#fffff01f"
+fill_strong = "#fffff029"
+track = "#fffff029"
+
+[on_paper]
+primary = "#0c0a00"
+secondary = "#0c0a00b3"
+tertiary = "#0c0a008c"
+quaternary = "#0c0a0073"
+disabled = "#0c0a0059"
+divider = "#0c0a001a"
+fill_subtle = "#0c0a000a"
+fill = "#0c0a0014"
+fill_strong = "#0c0a0024"
+track = "#0c0a0024"
+
+[scrim]
+boot = "#0c0a00c7"
+shutdown = "#0c0a00e0"
+lock_awake = "#0c0a009e"
+launcher = "#0c0a0085"
+overview = "#0c0a008c"
+capture = "#0c0a009e"
+modal = "#0c0a009e"
+translucent_panel = "#0c0a0099"
+
+[typography]
+family_ui = "IBM Plex Sans"
+family_display = "IBM Plex Serif"
+family_mono = "IBM Plex Mono"
+minimum_bar_size = 13.0
+
+[typography.weight]
+regular = 400
+medium = 500
+display = 400
+
+[typography.size]
+lock_clock = 168.0
+screen_title = 44.0
+panel_heading = 22.0
+dialog_title = 24.0
+section_heading = 20.0
+launcher_input = 22.0
+body = 13.5
+bar = 13.0
+secondary = 12.5
+meta = 12.0
+label = 11.0
+keycap = 11.0
+
+[radii]
+pill = 999.0
+popover = 30.0
+popover_wide = 34.0
+window = 24.0
+card = 26.0
+inset = 20.0
+tile = 13.0
+checkbox = 7.0
+selection = 6.0
+
+[sizes]
+panel_pill = 40.0
+panel_bar = 48.0
+panel_margin_islands = 26.0
+panel_margin_ledger = 20.0
+island_gap = 10.0
+popover_top = 72.0
+popover_width = 440.0
+notification_centre_width = 460.0
+launcher_width = 640.0
+notification_card_width = 440.0
+hit_target_bar = 40.0
+hit_target_touch = 44.0
+icon_bar = 15.0
+icon_row = 16.0
+icon_menu = 19.0
+icon_bare = 32.0
+icon_stroke = 2.75
+window_border = 2.0
+window_header = 46.0
+
+[shadows.popover]
+color = "#0c0a0080"
+offset_y = 18.0
+blur = 48.0
+
+[shadows.window]
+color = "#0c0a0080"
+offset_y = 24.0
+blur = 64.0
+
+[shadows.overlay]
+color = "#0c0a0099"
+offset_y = 24.0
+blur = 64.0
+
+[motion]
+hover = 140
+popover = 160
+wake = 450
+toast_in = 350
+toast_idle = 5000
+toast_out = 1000
+toast_total = 6350
+toast_max_stack = 3
+
+[terminal]
+background = "#0c0a00"
+foreground = "#e8e0ce"
+cursor = "#fffff0"
+cursor_text = "#0c0a00"
+selection = "#c67139"
+
+[terminal.normal]
+black = "#0c0a00"
+red = "#c05b3c"
+green = "#7a8a5e"
+yellow = "#c69139"
+blue = "#5e7a8a"
+magenta = "#9e6b7a"
+cyan = "#6e9188"
+white = "#e8e0ce"
+
+[terminal.bright]
+black = "#3a342a"
+red = "#e07a57"
+green = "#9cb077"
+yellow = "#e0b25c"
+blue = "#7c9cae"
+magenta = "#c08a99"
+cyan = "#8fb3a8"
+white = "#fffff0"

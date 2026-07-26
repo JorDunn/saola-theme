@@ -1,0 +1,34 @@
+# release-plz — per-crate semver bumps, changelogs, tags, and GitHub releases,
+# all derived from Conventional Commits. Docs: https://release-plz.dev
+
+[workspace]
+# Consumed as a git dependency; not published to crates.io (yet).
+publish = false
+# cargo-semver-checks needs a crates.io baseline to diff against — enable if we publish.
+semver_check = false
+# Per-crate GitHub release + tag ({package}-v{version}) when a crate changes.
+git_release_enable = true
+# One CHANGELOG.md per crate, in each crate's directory (release-plz default).
+changelog_update = true
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+"""
+# Map conventional commit types onto Keep a Changelog's categories.
+# Order matters: first match wins.
+commit_parsers = [
+  { message = "^security|^fix\\(security\\)", group = "Security" },
+  { message = "^remove", group = "Removed" },
+  { message = "^deprecate", group = "Deprecated" },
+  { message = "^\\w+(\\(.*\\))?!", group = "Changed" }, # breaking changes (`feat!:` etc.)
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf|^refactor", group = "Changed" },
+  { message = "^docs|^chore|^ci|^style|^test|^build", skip = true },
+]

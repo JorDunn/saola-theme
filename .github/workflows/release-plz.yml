@@ -1,0 +1,48 @@
+name: Release-plz
+
+permissions:
+  pull-requests: write
+  contents: write
+
+on:
+  push:
+    branches: [main]
+
+# Never run two release-plz jobs at once — they push commits and tags.
+concurrency:
+  group: release-plz
+  cancel-in-progress: false
+
+jobs:
+  # Tags + GitHub releases for any crate whose version was bumped on main
+  # (i.e. after a release PR merges).
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: release-plz/action@v0.5
+        with:
+          command: release
+        env:
+          # RELEASE_PLZ_TOKEN is an optional fine-grained PAT (contents +
+          # pull-requests: write). Without it the default token works, but
+          # PRs it opens won't trigger the CI workflow.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN || github.token }}
+
+  # Opens/updates the release PR: per-crate version bumps + changelog entries,
+  # derived from conventional commits since each crate's last tag.
+  release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN || github.token }}

@@ -1,0 +1,9 @@
+[workspace]
+resolver = "3"
+members = ["crates/saola-tokens", "crates/saola-theme"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+thiserror = "2"
+iced = { version = "0.14", default-features = false, features = ["wayland", "thread-pool"] }
