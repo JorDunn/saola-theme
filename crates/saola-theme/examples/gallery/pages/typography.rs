@@ -9,7 +9,7 @@
 //! proves itself at runtime: instead of reordering sections like the Colors
 //! page, this page's entire background and text color flip.
 
-use iced::widget::{column, container, scrollable, text};
+use iced::widget::{column, container, row, scrollable, text};
 use iced::{Element, Fill};
 use saola_theme::tokens::OnSurface;
 use saola_theme::{convert, style, ColorExt, Surface, Theme};
@@ -26,6 +26,10 @@ pub fn view(t: &Theme, surface: Surface) -> Element<'static, Message> {
             .size(heading_size)
             .color(on.primary.into_iced()),
         families_section(t, &on),
+        text("Tabular numerals")
+            .size(t.typography.size.secondary)
+            .color(on.secondary.into_iced()),
+        tabular_numerals_section(t, surface, &on),
         text("Size scale")
             .size(t.typography.size.secondary)
             .color(on.secondary.into_iced()),
@@ -105,6 +109,58 @@ fn families_section(t: &Theme, on: &OnSurface) -> Element<'static, Message> {
         ),
     ]
     .spacing(16)
+    .into()
+}
+
+/// Tabular numerals: IBM Plex ships tabular lining figures as its *default*
+/// (and only) figure widths — every digit is 600/1000 em in every family
+/// and weight we use — so same-slot numeric strings (a clock, a battery
+/// percentage) never reflow as their digits change. iced 0.14 exposes no
+/// OpenType feature API (no `tnum`), and none is needed; the full
+/// verification lives in `docs/decisions/tabular-numerals.md`.
+///
+/// The proof specimen: each string sits in its own shrink-width keycap
+/// chip. Because every digit occupies the same advance width, the chips in
+/// each column stack flush — a proportional figure set would leave the
+/// columns ragged (`7%` is deliberately one digit shorter: exactly one
+/// slot narrower, not "a bit" narrower).
+fn tabular_numerals_section(
+    t: &Theme,
+    surface: Surface,
+    on: &OnSurface,
+) -> Element<'static, Message> {
+    let ui_font = convert::ui_font(t);
+    let size = t.typography.size.panel_heading;
+
+    let chip_column = |strings: &[&str]| -> Element<'static, Message> {
+        let chips: Vec<Element<'static, Message>> = strings
+            .iter()
+            .map(|s| {
+                container(
+                    text(s.to_string())
+                        .font(ui_font)
+                        .size(size)
+                        .color(on.primary.into_iced()),
+                )
+                .style(style::container::keycap(t, surface))
+                .padding([2, 10])
+                .into()
+            })
+            .collect();
+        column(chips).spacing(4).into()
+    };
+
+    column![
+        row![
+            chip_column(&["09:41", "11:11", "23:59", "00:00"]),
+            chip_column(&["78%", "17%", "41%", "7%"]),
+        ]
+        .spacing(24),
+        text("Plex figures are tabular by default — equal-slot strings stay flush; the clock never reflows.")
+            .size(t.typography.size.label)
+            .color(on.tertiary.into_iced()),
+    ]
+    .spacing(8)
     .into()
 }
 

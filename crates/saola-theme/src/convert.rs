@@ -128,6 +128,11 @@ fn iced_weight(weight: u16) -> iced::font::Weight {
 /// body, row titles (the style guide's hard rule is Sans **500** for all of
 /// these; use [`ui_font_regular`] only for the explicitly-400 roles). Leaks
 /// the family name — see [`leak_font_name`].
+///
+/// Numerals: use this face for clocks/percentages too — IBM Plex's default
+/// figures are already tabular (equal-width digits, no reflow), so no
+/// `tnum` OpenType feature is needed (iced 0.14 couldn't set one anyway).
+/// See `docs/decisions/tabular-numerals.md` for the verification.
 pub fn ui_font(theme: &Theme) -> iced::Font {
     iced::Font {
         weight: iced_weight(theme.typography.weight.medium),
