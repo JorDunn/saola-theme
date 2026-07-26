@@ -140,7 +140,7 @@
     "foreground": "#E8E0CE",
     "cursor": "#FFFFF0",
     "cursorText": "#0C0A00",
-    "selection": "#C67139",
+    "selection": "#C671394D",
     "normal": {
       "black": "#0C0A00", "red": "#C05B3C", "green": "#7A8A5E", "yellow": "#C69139",
       "blue": "#5E7A8A", "magenta": "#9E6B7A", "cyan": "#6E9188", "white": "#E8E0CE"

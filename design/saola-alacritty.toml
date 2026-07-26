@@ -18,8 +18,9 @@ text   = "#0C0A00"
 cursor = "#C67139"
 text   = "#FFFFF0"
 
+# Terracotta at 30% over ink, pre-composited — Alacritty has no alpha.
 [colors.selection]
-background = "#C67139"
+background = "#442911"
 text       = "#FFFFF0"
 
 [colors.search.matches]

@@ -136,7 +136,7 @@ background = "#0c0a00"
 foreground = "#e8e0ce"
 cursor = "#fffff0"
 cursor_text = "#0c0a00"
-selection = "#c67139"
+selection = "#c671394d"
 
 [terminal.normal]
 black = "#0c0a00"

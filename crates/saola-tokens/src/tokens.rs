@@ -377,7 +377,10 @@ impl Default for Terminal {
             foreground: Color::rgb(0xE8, 0xE0, 0xCE),
             cursor: Color::rgb(0xFF, 0xFF, 0xF0),
             cursor_text: Color::rgb(0x0C, 0x0A, 0x00),
-            selection: Color::rgb(0xC6, 0x71, 0x39),
+            // Terracotta at 30% — exporters targeting formats without alpha
+            // (Alacritty) pre-composite this over `background` with
+            // `Color::over`.
+            selection: Color::rgba(0xC6, 0x71, 0x39, 77), // 0.30
             normal: AnsiColors::default(),
             bright: AnsiColors::bright(),
         }
