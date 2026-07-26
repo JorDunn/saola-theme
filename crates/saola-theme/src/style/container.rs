@@ -107,6 +107,63 @@ pub fn popover(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
     }
 }
 
+/// The urgent notification card (concept 10b): [`card`] plus a 2 px accent
+/// ring — "a terracotta ring and no life rule" (no fourth color, no
+/// vibrating/pulsing animation; the ring alone is what signals urgency).
+pub fn card_urgent(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+    let radius = t.radii.card;
+    let text = t.on_paper.primary.into_iced();
+    let accent = t.palette.accent.into_iced();
+    let (background, shadow) = match s {
+        Surface::Ink => (
+            t.palette.paper.into_iced(),
+            Some(t.shadows.popover.into_iced()),
+        ),
+        Surface::Paper => (t.on_paper.fill_subtle.into_iced(), None),
+    };
+    move |_| Style {
+        border: Border {
+            color: accent,
+            width: 2.0,
+            radius: radius.into(),
+        },
+        shadow: shadow.unwrap_or_default(),
+        ..surface(background, text, radius)
+    }
+}
+
+/// A keycap chip — the `↵`/`⇥` hints shown on nearly every concept screen.
+/// A small pill/tile at `radii.selection`: `fill_subtle` background with a
+/// slightly stronger `fill` outline, reading as a quiet, key-like edge
+/// rather than competing with surrounding content. The mono font at
+/// `size.keycap` is the consumer's job (this helper only owns the chip's
+/// chrome, not the glyph inside it).
+pub fn keycap(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+    let radius = t.radii.selection;
+    let on = *t.on(s);
+    move |_| Style {
+        text_color: Some(on.secondary.into_iced()),
+        background: Some(Background::Color(on.fill_subtle.into_iced())),
+        border: Border {
+            color: on.fill.into_iced(),
+            width: 1.0,
+            radius: radius.into(),
+        },
+        ..Style::default()
+    }
+}
+
+/// A badge — unread counts and similar tiny indicators. An accent pill with
+/// ivory text, identical on both surfaces (the same "terracotta = live"
+/// recipe as [`crate::style::button::active`]), so this takes only the
+/// theme.
+pub fn badge(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+    let radius = t.radii.pill;
+    let accent = t.palette.accent.into_iced();
+    let text = t.palette.paper.into_iced();
+    move |_| surface(accent, text, radius)
+}
+
 /// The state of one minimap dash. The panel's centre module draws the niri
 /// column strip as one dash per column; exactly one is [`DashState::Focused`]
 /// — the one live element, per the one rule.

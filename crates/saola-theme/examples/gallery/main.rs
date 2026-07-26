@@ -15,8 +15,8 @@
 mod pages;
 
 use iced::widget::{
-    button, checkbox, column, container, pick_list, progress_bar, row, rule, scrollable, slider,
-    text, text_input, toggler, Space,
+    button, checkbox, column, container, pick_list, progress_bar, radio, row, rule, scrollable,
+    slider, text, text_input, toggler, Space,
 };
 use iced::{Element, Fill, Size, Task};
 use saola_theme::style::container::DashState;
@@ -53,6 +53,13 @@ enum Message {
     TogglerToggled(bool),
     SliderChanged(f32),
     PickListSelected(&'static str),
+    /// The Stage 8 kit's own text-input specimens share one value field
+    /// (the demo is about the border/ring treatment, not distinct content).
+    KitTextInputChanged(String),
+    /// `true` = Ascending, `false` = Descending — the radio group's choice.
+    RadioSelected(bool),
+    /// Index into the segmented control's labels (Files/Folders/All).
+    SegmentSelected(usize),
     /// Flips `Gallery::surface` between `Surface::Ink` and `Surface::Paper`.
     /// No payload: there are only two surfaces, so "toggle" always means
     /// "the other one" — nothing the message needs to carry.
@@ -73,6 +80,9 @@ struct Gallery {
     toggler_toggled: bool,
     slider_value: f32,
     pick_list_selected: Option<&'static str>,
+    kit_text_input_value: String,
+    radio_selected: bool,
+    segment_selected: usize,
 }
 
 impl Gallery {
@@ -86,6 +96,9 @@ impl Gallery {
             toggler_toggled: true,
             slider_value: 40.0,
             pick_list_selected: Some(PICK_LIST_OPTIONS[0]),
+            kit_text_input_value: String::new(),
+            radio_selected: true,
+            segment_selected: 0,
         }
     }
 
@@ -98,6 +111,9 @@ impl Gallery {
             Message::TogglerToggled(toggled) => self.toggler_toggled = toggled,
             Message::SliderChanged(value) => self.slider_value = value,
             Message::PickListSelected(selected) => self.pick_list_selected = Some(selected),
+            Message::KitTextInputChanged(value) => self.kit_text_input_value = value,
+            Message::RadioSelected(selected) => self.radio_selected = selected,
+            Message::SegmentSelected(index) => self.segment_selected = index,
             Message::SurfaceToggled => {
                 self.surface = match self.surface {
                     Surface::Ink => Surface::Paper,
@@ -212,6 +228,9 @@ impl Gallery {
                 text("Controls").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.controls_column(primary)),
                 self.labeled_surface_row(secondary, self.controls_column(secondary)),
+                text("Kit").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.kit_column(primary)),
+                self.labeled_surface_row(secondary, self.kit_column(secondary)),
             ]
             .spacing(16)
             .width(Fill),
@@ -416,5 +435,122 @@ impl Gallery {
         .spacing(16)
         .width(Fill)
         .into()
+    }
+
+    /// The Stage 8 kit: text-input `rest`/focused/`rejected` side by side,
+    /// a radio group, a segmented control, the urgent card, and the
+    /// keycap/badge chips — in the given surface context.
+    fn kit_column(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+
+        // Rest / focused / rejected: three fields sharing one style pattern
+        // apart from the border. Click into the middle one to see the
+        // ordinary 2px accent focus ring `rest` draws only on
+        // `Status::Focused`; the third field's tinted ring is always on,
+        // which is the whole point of `rejected` — legible as a distinct
+        // third state even before it's touched.
+        let text_input_states = row![
+            text_input("Rest", &self.kit_text_input_value)
+                .style(style::text_input::rest(t, s))
+                .padding([10, 14])
+                .on_input(Message::KitTextInputChanged),
+            text_input("Click to focus", &self.kit_text_input_value)
+                .style(style::text_input::rest(t, s))
+                .padding([10, 14])
+                .on_input(Message::KitTextInputChanged),
+            text_input("Rejected", &self.kit_text_input_value)
+                .style(style::text_input::rejected(t, s))
+                .padding([10, 14])
+                .on_input(Message::KitTextInputChanged),
+        ]
+        .spacing(12);
+
+        // Radio group: 9d's Ascending/Descending rows.
+        let radios = row![
+            radio(
+                "Ascending",
+                true,
+                Some(self.radio_selected),
+                Message::RadioSelected
+            )
+            .style(style::radio::radio(t, s)),
+            radio(
+                "Descending",
+                false,
+                Some(self.radio_selected),
+                Message::RadioSelected
+            )
+            .style(style::radio::radio(t, s)),
+        ]
+        .spacing(24);
+
+        // Segmented control: 9d's Files | Folders | All, built as a row of
+        // buttons inside a `track` container, not a custom widget.
+        const SEGMENTS: [&str; 3] = ["Files", "Folders", "All"];
+        let segments: Vec<Element<'_, Message>> = SEGMENTS
+            .iter()
+            .enumerate()
+            .map(|(index, label)| {
+                button(text(*label).size(t.typography.size.body))
+                    .style(style::segmented::segment(
+                        t,
+                        s,
+                        index == self.segment_selected,
+                    ))
+                    .padding([8, 16])
+                    .on_press(Message::SegmentSelected(index))
+                    .into()
+            })
+            .collect();
+        let segmented = container(row(segments).spacing(4))
+            .style(style::segmented::track(t, s))
+            .padding(4);
+
+        // The urgent notification card (10b): `card` plus a 2px accent
+        // ring, no other change — "no life rule".
+        let urgent_card = container(
+            column![
+                text("Battery critical")
+                    .font(convert::display_font(t))
+                    .size(t.typography.size.section_heading),
+                text("6% remaining — plug in now")
+                    .size(t.typography.size.secondary)
+                    .color(convert::ColorExt::into_iced(t.on_paper.secondary)),
+            ]
+            .spacing(6),
+        )
+        .style(style::container::card_urgent(t, s))
+        .padding(18)
+        .width(300);
+
+        // Keycap and badge chips.
+        let keycap = |label: &'static str| {
+            container(
+                text(label)
+                    .font(convert::mono_font_medium(t))
+                    .size(t.typography.size.keycap),
+            )
+            .style(style::container::keycap(t, s))
+            .padding([2, 8])
+        };
+        let badge = |count: &'static str| {
+            container(text(count).size(t.typography.size.meta))
+                .style(style::container::badge(t))
+                .padding([2, 8])
+        };
+        let chips = row![
+            keycap("↵"),
+            keycap("⇥"),
+            text("  "),
+            badge("3"),
+            badge("12"),
+        ]
+        .spacing(8)
+        .align_y(iced::Center);
+
+        column![text_input_states, radios, segmented, urgent_card, chips,]
+            .spacing(16)
+            .width(Fill)
+            .into()
     }
 }

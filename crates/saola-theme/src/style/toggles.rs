@@ -31,21 +31,23 @@ use crate::convert::ColorExt;
 
 /// Off/on backgrounds (with one hover step each) plus the "content" color
 /// that sits on each, shared by checkbox and toggler since both follow the
-/// same off = ivory/fill, on = terracotta split.
-struct ToggleColors {
-    off: TokenColor,
-    off_hovered: TokenColor,
-    off_content: TokenColor,
-    on: TokenColor,
-    on_hovered: TokenColor,
-    on_content: TokenColor,
+/// same off = ivory/fill, on = terracotta split. `pub(crate)` so
+/// [`crate::style::radio`] can reuse the exact same recipe — a radio button
+/// is the same off/on split again, just drawn circular.
+pub(crate) struct ToggleColors {
+    pub(crate) off: TokenColor,
+    pub(crate) off_hovered: TokenColor,
+    pub(crate) off_content: TokenColor,
+    pub(crate) on: TokenColor,
+    pub(crate) on_hovered: TokenColor,
+    pub(crate) on_content: TokenColor,
     /// `on(s).divider` — the off-state outline.
-    off_border: TokenColor,
-    disabled_bg: TokenColor,
-    disabled_content: TokenColor,
+    pub(crate) off_border: TokenColor,
+    pub(crate) disabled_bg: TokenColor,
+    pub(crate) disabled_content: TokenColor,
 }
 
-fn toggle_colors(t: &Theme, s: Surface) -> ToggleColors {
+pub(crate) fn toggle_colors(t: &Theme, s: Surface) -> ToggleColors {
     let on = *t.on(s);
     let accent = t.palette.accent;
     // Off = ivory/fill (rest): opaque ivory pill over ink (hover steps
