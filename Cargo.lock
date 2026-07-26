@@ -2482,7 +2482,7 @@ dependencies = [
 
 [[package]]
 name = "saola-theme"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "iced",
  "saola-tokens",
@@ -2490,7 +2490,7 @@ dependencies = [
 
 [[package]]
 name = "saola-tokens"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "thiserror 2.0.19",
