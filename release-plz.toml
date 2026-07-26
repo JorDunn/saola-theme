@@ -7,6 +7,11 @@ publish = false
 # Pre-1.0, `feat:` bumps the minor (0.1 -> 0.2), not the patch — consumers pin
 # minor versions of the theme, so additive API belongs in a minor release.
 features_always_increment_minor = true
+# Determine the current released version from git tags, not crates.io — these
+# crates aren't published there, so registry-based detection always concluded
+# "already up-to-date" and could never bump past the first release. Needs every
+# tagged tree to pass `cargo package --workspace` (true from v0.2.0 onward).
+git_only = true
 # cargo-semver-checks needs a crates.io baseline to diff against — enable if we publish.
 semver_check = false
 # Per-crate GitHub release + tag ({package}-v{version}) when a crate changes.
