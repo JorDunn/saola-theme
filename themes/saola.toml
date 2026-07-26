@@ -105,6 +105,13 @@ icon_bare = 32.0
 icon_stroke = 2.75
 window_border = 2.0
 window_header = 46.0
+panel_pill_media = 30.0
+panel_pill_clock = 32.0
+panel_margin_ledger_top = 18.0
+bar_element_gap = 14.0
+bar_cluster_gap = 15.0
+bar_icon_gap = 7.0
+media_title_max_width = 190.0
 
 [shadows.popover]
 color = "#0c0a0080"

@@ -106,28 +106,92 @@ pub fn leak_font_name(name: &str) -> &'static str {
     Box::leak(name.to_owned().into_boxed_str())
 }
 
+/// Map a CSS-numeric font weight (100..=900) onto iced's nearest named
+/// [`iced::font::Weight`] variant.
+fn iced_weight(weight: u16) -> iced::font::Weight {
+    use iced::font::Weight;
+    match weight {
+        ..150 => Weight::Thin,
+        150..250 => Weight::ExtraLight,
+        250..350 => Weight::Light,
+        350..450 => Weight::Normal,
+        450..550 => Weight::Medium,
+        550..650 => Weight::Semibold,
+        650..750 => Weight::Bold,
+        750..850 => Weight::ExtraBold,
+        850.. => Weight::Black,
+    }
+}
+
 /// The UI face (`typography.family_ui`, IBM Plex Sans in the built-in theme)
-/// as an `iced::Font`. Leaks the family name — see [`leak_font_name`].
+/// at `weight.medium` — the default for everything you scan: panel/bar text,
+/// body, row titles (the style guide's hard rule is Sans **500** for all of
+/// these; use [`ui_font_regular`] only for the explicitly-400 roles). Leaks
+/// the family name — see [`leak_font_name`].
 pub fn ui_font(theme: &Theme) -> iced::Font {
-    iced::Font::with_name(leak_font_name(&theme.typography.family_ui))
+    iced::Font {
+        weight: iced_weight(theme.typography.weight.medium),
+        ..iced::Font::with_name(leak_font_name(&theme.typography.family_ui))
+    }
 }
 
-/// The display face (`typography.family_display`, IBM Plex Serif) as an
-/// `iced::Font`. Leaks the family name — see [`leak_font_name`].
+/// The UI face at `weight.regular` — secondary row text, metadata, and the
+/// launcher input, per the style guide's scale. Leaks the family name — see
+/// [`leak_font_name`].
+pub fn ui_font_regular(theme: &Theme) -> iced::Font {
+    iced::Font {
+        weight: iced_weight(theme.typography.weight.regular),
+        ..iced::Font::with_name(leak_font_name(&theme.typography.family_ui))
+    }
+}
+
+/// The display face (`typography.family_display`, IBM Plex Serif) at
+/// `weight.display` as an `iced::Font`. Leaks the family name — see
+/// [`leak_font_name`].
 pub fn display_font(theme: &Theme) -> iced::Font {
-    iced::Font::with_name(leak_font_name(&theme.typography.family_display))
+    iced::Font {
+        weight: iced_weight(theme.typography.weight.display),
+        ..iced::Font::with_name(leak_font_name(&theme.typography.family_display))
+    }
 }
 
-/// The mono face (`typography.family_mono`, IBM Plex Mono) as an
-/// `iced::Font`. Leaks the family name — see [`leak_font_name`].
+/// The mono face (`typography.family_mono`, IBM Plex Mono) at
+/// `weight.regular` — file paths, hex values, terminal-style text. Keycaps
+/// and uppercase section labels are Mono 500: use [`mono_font_medium`].
+/// Leaks the family name — see [`leak_font_name`].
 pub fn mono_font(theme: &Theme) -> iced::Font {
-    iced::Font::with_name(leak_font_name(&theme.typography.family_mono))
+    iced::Font {
+        weight: iced_weight(theme.typography.weight.regular),
+        ..iced::Font::with_name(leak_font_name(&theme.typography.family_mono))
+    }
+}
+
+/// The mono face at `weight.medium` — keycaps and uppercase section labels,
+/// per the style guide's scale. Leaks the family name — see
+/// [`leak_font_name`].
+pub fn mono_font_medium(theme: &Theme) -> iced::Font {
+    iced::Font {
+        weight: iced_weight(theme.typography.weight.medium),
+        ..iced::Font::with_name(leak_font_name(&theme.typography.family_mono))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use saola_tokens::Color;
+
+    #[test]
+    fn weight_maps_to_nearest_variant() {
+        use iced::font::Weight;
+        assert_eq!(iced_weight(400), Weight::Normal);
+        assert_eq!(iced_weight(500), Weight::Medium);
+        assert_eq!(iced_weight(100), Weight::Thin);
+        assert_eq!(iced_weight(900), Weight::Black);
+        // Off-scale values snap to the nearest hundred's variant.
+        assert_eq!(iced_weight(449), Weight::Normal);
+        assert_eq!(iced_weight(450), Weight::Medium);
+    }
 
     #[test]
     fn into_iced_scales_channels() {

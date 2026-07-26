@@ -174,6 +174,24 @@ pub struct Sizes {
     pub icon_stroke: f32,
     pub window_border: f32,
     pub window_header: f32,
+    /// Height of the compact media pill *inside* the 48px ledger bar
+    /// (smaller than `panel_pill`, which is a free-standing islands pill).
+    pub panel_pill_media: f32,
+    /// Height of the compact clock pill inside the ledger bar.
+    pub panel_pill_clock: f32,
+    /// Vertical inset of the floating ledger bar from the screen edge
+    /// (`panel_margin_ledger` is the horizontal inset).
+    pub panel_margin_ledger_top: f32,
+    /// Gap between elements along the ledger bar.
+    pub bar_element_gap: f32,
+    /// Gap between readouts inside the bar's status cluster.
+    pub bar_cluster_gap: f32,
+    /// Gap between an icon and its value inside one status readout
+    /// (tighter than `pill_gap`, which is the icon↔label gap in a pill).
+    pub bar_icon_gap: f32,
+    /// Maximum width of the media pill's title text before it truncates
+    /// (`pill_max_width` caps the whole pill; this caps just the title).
+    pub media_title_max_width: f32,
 }
 
 impl Default for Sizes {
@@ -206,6 +224,13 @@ impl Default for Sizes {
             icon_stroke: 2.75,
             window_border: 2.0,
             window_header: 46.0,
+            panel_pill_media: 30.0,
+            panel_pill_clock: 32.0,
+            panel_margin_ledger_top: 18.0,
+            bar_element_gap: 14.0,
+            bar_cluster_gap: 15.0,
+            bar_icon_gap: 7.0,
+            media_title_max_width: 190.0,
         }
     }
 }

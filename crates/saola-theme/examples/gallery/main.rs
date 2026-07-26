@@ -263,7 +263,42 @@ impl Gallery {
         .padding(22)
         .width(320);
 
-        column![minimap, popover].spacing(16).into()
+        // The floating ledger bar: bar_pill chrome at panel_bar height, with
+        // the compact inner pills at their own heights (media 30, clock 32
+        // inside the 48 bar) and the bar/cluster gap tokens.
+        let inner_pill = |label: &'static str, height: f32| {
+            container(
+                text(label)
+                    .font(convert::ui_font(t))
+                    .size(t.typography.size.bar),
+            )
+            .style(style::container::translucent_panel(t))
+            .height(height)
+            .padding([0, 14])
+            .align_y(iced::Center)
+        };
+        let ledger = container(
+            row![
+                text("alacritty")
+                    .font(convert::ui_font(t))
+                    .size(t.typography.size.bar),
+                text("~/dev/saola — cargo run")
+                    .font(convert::ui_font_regular(t))
+                    .size(t.typography.size.bar)
+                    .color(convert::ColorExt::into_iced(t.on_ink.tertiary)),
+                Space::new().width(Fill),
+                inner_pill("Nala Sinephro — Space 1.8", t.sizes.panel_pill_media),
+                inner_pill("Fri 24 Jul · 09:41", t.sizes.panel_pill_clock),
+            ]
+            .spacing(t.sizes.bar_element_gap)
+            .align_y(iced::Center),
+        )
+        .style(style::container::bar_pill(t))
+        .height(t.sizes.panel_bar)
+        .padding([0, 16])
+        .align_y(iced::Center);
+
+        column![minimap, ledger, popover].spacing(16).into()
     }
 
     /// A "On ink" / "On paper" caption above `content`, wrapping `content`

@@ -81,6 +81,18 @@ pub fn translucent_panel(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
     move |_| surface(scrim, text, radius)
 }
 
+/// The floating ledger bar: one solid-ink pill inset from the screen edge
+/// (`sizes.panel_margin_ledger` / `panel_margin_ledger_top` — the concept's
+/// ledger is a rounded pill, not an edge-to-edge strip), ivory text, no
+/// border or shadow. Ink-only shell chrome like [`translucent_panel`]
+/// (which is its translucent islands counterpart).
+pub fn bar_pill(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+    let ink = t.palette.ink.into_iced();
+    let text = t.on_ink.primary.into_iced();
+    let radius = t.radii.pill;
+    move |_| surface(ink, text, radius)
+}
+
 /// A popover: opaque ink at the popover radius with ivory text and the
 /// popover shadow. Popovers are shell chrome, so like [`ink_surface`] and
 /// [`translucent_panel`] this is ink-only — there is no paper popover.
