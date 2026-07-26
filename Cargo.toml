@@ -2,6 +2,9 @@
 resolver = "3"
 members = ["crates/saola-tokens", "crates/saola-theme"]
 
+[workspace.package]
+license = "MIT OR Apache-2.0"
+
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
