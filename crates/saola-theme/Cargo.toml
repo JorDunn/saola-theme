@@ -5,7 +5,7 @@ edition = "2021"
 license.workspace = true
 
 [dependencies]
-saola-tokens = { path = "../saola-tokens" }
+saola-tokens = { path = "../saola-tokens", version = "0.1.0" }
 iced = { workspace = true }
 
 [dev-dependencies]

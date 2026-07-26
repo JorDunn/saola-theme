@@ -4,6 +4,9 @@
 [workspace]
 # Consumed as a git dependency; not published to crates.io (yet).
 publish = false
+# Pre-1.0, `feat:` bumps the minor (0.1 -> 0.2), not the patch — consumers pin
+# minor versions of the theme, so additive API belongs in a minor release.
+features_always_increment_minor = true
 # cargo-semver-checks needs a crates.io baseline to diff against — enable if we publish.
 semver_check = false
 # Per-crate GitHub release + tag ({package}-v{version}) when a crate changes.

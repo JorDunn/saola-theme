@@ -96,7 +96,8 @@ Target: **stable iced 0.14** (`iced_layershell` 0.19.x tracks it). No zbus in th
 
 - **Commit messages must follow Conventional Commits** (`feat:`, `fix:`, `feat!:` for
   breaking, etc.) — release-plz derives each crate's semver bump and changelog from them.
-  Pre-1.0, a breaking change bumps the minor version (Cargo semantics).
+  Pre-1.0, a breaking change bumps the minor version (Cargo semantics), and so does a
+  plain `feat:` (`features_always_increment_minor` in `release-plz.toml`).
 - Never bump versions in Cargo.toml or edit CHANGELOG.md files by hand — the release-plz
   release PR does both, per crate, only for crates that changed. Config lives in
   `release-plz.toml`; the workflow is `.github/workflows/release-plz.yml`.
