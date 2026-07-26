@@ -16,9 +16,10 @@ mod pages;
 
 use iced::widget::{
     button, checkbox, column, container, pick_list, progress_bar, row, rule, scrollable, slider,
-    text, text_input, toggler,
+    text, text_input, toggler, Space,
 };
 use iced::{Element, Fill, Size, Task};
+use saola_theme::style::container::DashState;
 use saola_theme::{convert, style, Surface, Theme};
 
 /// The options shown in the Widgets page's pick list demo.
@@ -201,17 +202,68 @@ impl Gallery {
         let t = &self.theme;
         let (primary, secondary) = self.ordered_surfaces();
 
-        column![
-            text("Buttons").size(t.typography.size.section_heading),
-            self.labeled_surface_row(primary, self.button_row(primary)),
-            self.labeled_surface_row(secondary, self.button_row(secondary)),
-            text("Controls").size(t.typography.size.section_heading),
-            self.labeled_surface_row(primary, self.controls_column(primary)),
-            self.labeled_surface_row(secondary, self.controls_column(secondary)),
-        ]
-        .spacing(16)
-        .width(Fill)
+        scrollable(
+            column![
+                text("Buttons").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.button_row(primary)),
+                self.labeled_surface_row(secondary, self.button_row(secondary)),
+                text("Panel").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.panel_column()),
+                text("Controls").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.controls_column(primary)),
+                self.labeled_surface_row(secondary, self.controls_column(secondary)),
+            ]
+            .spacing(16)
+            .width(Fill),
+        )
+        .style(style::scrollable::rest(t, Surface::Ink))
         .into()
+    }
+
+    /// The panel treatments: the columns minimap (stubs at each end, rests,
+    /// one focused dash) inside an island pill, and the popover surface.
+    /// Both are shell chrome, so this section only exists on ink.
+    fn panel_column(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let dash = |state: DashState, width: f32| {
+            container(Space::new())
+                .style(style::container::dash(t, state))
+                .width(width)
+                .height(t.sizes.dash_height)
+        };
+        let minimap = container(
+            row![
+                dash(DashState::Stub, t.sizes.dash_width_stub),
+                dash(DashState::Rest, t.sizes.dash_width_rest),
+                dash(DashState::Focused, t.sizes.dash_width_focused),
+                dash(DashState::Rest, t.sizes.dash_width_rest),
+                dash(DashState::Rest, t.sizes.dash_width_rest),
+                dash(DashState::Stub, t.sizes.dash_width_stub),
+            ]
+            .spacing(t.sizes.dash_gap)
+            .align_y(iced::Center),
+        )
+        .style(style::container::translucent_panel(t))
+        .height(t.sizes.panel_pill)
+        .padding([0, 16])
+        .align_y(iced::Center);
+
+        let popover = container(
+            column![
+                text("Quick settings")
+                    .font(convert::display_font(t))
+                    .size(t.typography.size.section_heading),
+                text("Opaque ink · popover radius · popover shadow")
+                    .size(t.typography.size.secondary)
+                    .color(convert::ColorExt::into_iced(t.on_ink.secondary)),
+            ]
+            .spacing(8),
+        )
+        .style(style::container::popover(t))
+        .padding(22)
+        .width(320);
+
+        column![minimap, popover].spacing(16).into()
     }
 
     /// A "On ink" / "On paper" caption above `content`, wrapping `content`
@@ -258,6 +310,10 @@ impl Gallery {
                 .on_press(Message::DemoPressed),
             button(text("Active").size(size))
                 .style(style::button::active(t, s))
+                .padding(pad)
+                .on_press(Message::DemoPressed),
+            button(text("Muted").size(size))
+                .style(style::button::muted(t, s))
                 .padding(pad)
                 .on_press(Message::DemoPressed),
             button(text("Bare").size(size))

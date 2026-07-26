@@ -81,6 +81,60 @@ pub fn translucent_panel(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
     move |_| surface(scrim, text, radius)
 }
 
+/// A popover: opaque ink at the popover radius with ivory text and the
+/// popover shadow. Popovers are shell chrome, so like [`ink_surface`] and
+/// [`translucent_panel`] this is ink-only — there is no paper popover.
+pub fn popover(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+    let ink = t.palette.ink.into_iced();
+    let text = t.on_ink.primary.into_iced();
+    let radius = t.radii.popover;
+    let shadow = t.shadows.popover.into_iced();
+    move |_| Style {
+        shadow,
+        ..surface(ink, text, radius)
+    }
+}
+
+/// The state of one minimap dash. The panel's centre module draws the niri
+/// column strip as one dash per column; exactly one is [`DashState::Focused`]
+/// — the one live element, per the one rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DashState {
+    /// An on-screen, unfocused column.
+    Rest,
+    /// The focused column — terracotta, and widened by the consumer
+    /// (`sizes.dash_width_focused`).
+    Focused,
+    /// An off-screen column, shown as a stub at either end of the strip.
+    Stub,
+}
+
+/// One minimap dash: a tiny pill sitting directly on the bar. Like the
+/// bare-icon menu, rest and stub dashes are ivory stepped with alpha
+/// (tertiary / quaternary emphasis); the focused dash is full terracotta.
+/// The bar is a shell surface, so this is ink-only.
+///
+/// Geometry — height, per-state widths, and the gap between dashes — comes
+/// from the `sizes.dash_*` tokens; the consumer sets them on the container.
+/// A dash carries no text, so no `text_color` is set.
+pub fn dash(t: &Theme, state: DashState) -> impl Fn(&iced::Theme) -> Style {
+    let fill = match state {
+        DashState::Rest => t.on_ink.tertiary.into_iced(),
+        DashState::Focused => t.palette.accent.into_iced(),
+        DashState::Stub => t.on_ink.quaternary.into_iced(),
+    };
+    let radius = t.radii.pill;
+    move |_| Style {
+        background: Some(Background::Color(fill)),
+        border: Border {
+            color: Color::TRANSPARENT,
+            width: 0.0,
+            radius: radius.into(),
+        },
+        ..Style::default()
+    }
+}
+
 /// A tooltip: solid ink at the tile radius with ivory text and the popover
 /// shadow — readable on either surface.
 pub fn tooltip(t: &Theme) -> impl Fn(&iced::Theme) -> Style {

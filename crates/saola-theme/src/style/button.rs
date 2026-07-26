@@ -1,4 +1,4 @@
-//! Button styles: `rest`, `active`, `bare`.
+//! Button styles: `rest`, `active`, `muted`, `bare`.
 //!
 //! The one rule, applied to buttons:
 //!
@@ -6,6 +6,8 @@
 //!   an ink **fill** pill on paper (ink label).
 //! - [`active`] — on / selected / live: a **terracotta** pill with an ivory
 //!   label, identical on both surfaces.
+//! - [`muted`] — muted / off-ish: a **subtle-fill** pill with a
+//!   secondary-emphasis label, quieter than `rest`.
 //! - [`bare`] — label only; hover/press surface it through the fill steps.
 //!
 //! There is deliberately no `danger` variant: Saola has three colors, never
@@ -112,6 +114,34 @@ pub fn active(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
         Status::Active => pill(Some(accent.into_iced()), label.into_iced(), radius),
         Status::Hovered => pill(Some(hover_bg.into_iced()), label.into_iced(), radius),
         Status::Pressed => pill(Some(press_bg.into_iced()), label.into_iced(), radius),
+        Status::Disabled => pill(
+            Some(on.fill_subtle.into_iced()),
+            on.disabled.into_iced(),
+            radius,
+        ),
+    }
+}
+
+/// Muted / off-ish — a quiet pill for states like volume muted or Wi-Fi
+/// offline: same geometry as [`rest`], but a subtle translucent fill with a
+/// secondary-emphasis label. Hover and press step the fill deeper
+/// (`fill_subtle → fill → fill_strong`); every fill here is translucent, so
+/// iced blends it over whatever surface is behind the button.
+pub fn muted(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
+    let radius = t.radii.pill;
+    let on = *t.on(s);
+    move |_, status| match status {
+        Status::Active => pill(
+            Some(on.fill_subtle.into_iced()),
+            on.secondary.into_iced(),
+            radius,
+        ),
+        Status::Hovered => pill(Some(on.fill.into_iced()), on.secondary.into_iced(), radius),
+        Status::Pressed => pill(
+            Some(on.fill_strong.into_iced()),
+            on.secondary.into_iced(),
+            radius,
+        ),
         Status::Disabled => pill(
             Some(on.fill_subtle.into_iced()),
             on.disabled.into_iced(),

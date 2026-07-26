@@ -143,11 +143,27 @@ pub struct Sizes {
     pub panel_margin_islands: f32,
     pub panel_margin_ledger: f32,
     pub island_gap: f32,
+    /// Gap between an icon and its label *inside* a pill (`island_gap` is
+    /// the gap between pills).
+    pub pill_gap: f32,
+    /// Maximum width of a text-bearing bar pill (the media "title — artist"
+    /// pill) before its label truncates.
+    pub pill_max_width: f32,
+    /// Minimap dash geometry: the panel's centre module maps the niri column
+    /// strip as one dash per column — the focused one widened, off-screen
+    /// columns as stubs at each end.
+    pub dash_height: f32,
+    pub dash_width_rest: f32,
+    pub dash_width_focused: f32,
+    pub dash_width_stub: f32,
+    pub dash_gap: f32,
     pub popover_top: f32,
     pub popover_width: f32,
     pub notification_centre_width: f32,
     pub launcher_width: f32,
     pub notification_card_width: f32,
+    /// Menu/list row height (tray menus, popover lists).
+    pub list_row: f32,
     pub hit_target_bar: f32,
     pub hit_target_touch: f32,
     pub icon_bar: f32,
@@ -168,11 +184,19 @@ impl Default for Sizes {
             panel_margin_islands: 26.0,
             panel_margin_ledger: 20.0,
             island_gap: 10.0,
+            pill_gap: 8.0,
+            pill_max_width: 280.0,
+            dash_height: 6.0,
+            dash_width_rest: 26.0,
+            dash_width_focused: 42.0,
+            dash_width_stub: 10.0,
+            dash_gap: 8.0,
             popover_top: 72.0,
             popover_width: 440.0,
             notification_centre_width: 460.0,
             launcher_width: 640.0,
             notification_card_width: 440.0,
+            list_row: 38.0,
             hit_target_bar: 40.0,
             hit_target_touch: 44.0,
             icon_bar: 15.0,
