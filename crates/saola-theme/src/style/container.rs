@@ -171,26 +171,37 @@ pub fn badge(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
 pub enum DashState {
     /// An on-screen, unfocused column.
     Rest,
-    /// The focused column — terracotta, and widened by the consumer
+    /// The focused column — solid ivory (the strip's documented exception
+    /// to "terracotta = live", see [`dash`]), and widened by the consumer
     /// (`sizes.dash_width_focused`).
     Focused,
     /// An off-screen column, shown as a stub at either end of the strip.
     Stub,
 }
 
-/// One minimap dash: a tiny pill sitting directly on the bar. Like the
-/// bare-icon menu, rest and stub dashes are ivory stepped with alpha
-/// (tertiary / quaternary emphasis); the focused dash is full terracotta.
-/// The bar is a shell surface, so this is ink-only.
+/// One minimap dash: a tiny pill sitting directly on the bar.
+///
+/// **Documented exception to the one rule.** Saola's rule is "ivory fill =
+/// at rest, terracotta fill = on/selected/live" — but on the column strip
+/// the focused dash reads as *the solid ivory pill*, not terracotta.
+/// Terracotta never appears on the strip. This was a design correction
+/// (concept listing 2a "Ink & ivory", Jordan's decision 2026-07-31) after
+/// review against the settled Islands mockup, which shows the focused dash
+/// as solid paper (`#FFFFF0`) and the rest dashes as dim ivory
+/// (`rgba(255,255,240,.28)`); the closest existing alpha-stepped role is
+/// used for the rest/stub dashes rather than inventing a new step. In the
+/// Islands centre cluster, the clock is ivory *text* (not a pill), so this
+/// focused dash is that cluster's only solid-ivory element. The bar is a
+/// shell surface, so this helper is ink-only.
 ///
 /// Geometry — height, per-state widths, and the gap between dashes — comes
 /// from the `sizes.dash_*` tokens; the consumer sets them on the container.
 /// A dash carries no text, so no `text_color` is set.
 pub fn dash(t: &Theme, state: DashState) -> impl Fn(&iced::Theme) -> Style {
     let fill = match state {
-        DashState::Rest => t.on_ink.tertiary.into_iced(),
-        DashState::Focused => t.palette.accent.into_iced(),
-        DashState::Stub => t.on_ink.quaternary.into_iced(),
+        DashState::Rest => t.on_ink.quaternary.into_iced(),
+        DashState::Focused => t.palette.paper.into_iced(),
+        DashState::Stub => t.on_ink.disabled.into_iced(),
     };
     let radius = t.radii.pill;
     move |_| Style {

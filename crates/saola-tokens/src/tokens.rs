@@ -150,8 +150,12 @@ pub struct Sizes {
     /// pill) before its label truncates.
     pub pill_max_width: f32,
     /// Minimap dash geometry: the panel's centre module maps the niri column
-    /// strip as one dash per column — the focused one widened, off-screen
-    /// columns as stubs at each end.
+    /// strip as one dash per column. A rest dash is a **round dot** (width
+    /// equals `dash_height`, so `radii.pill` closes it into a circle); the
+    /// focused one keeps that height but is about twice as wide (per concept
+    /// listing 2a — corrected from an earlier thin-rule geometry, Jordan's
+    /// decision 2026-07-31); off-screen columns are narrower stubs at each
+    /// end, reading as a dot squeezed in at the strip's edge.
     pub dash_height: f32,
     pub dash_width_rest: f32,
     pub dash_width_focused: f32,
@@ -204,11 +208,11 @@ impl Default for Sizes {
             island_gap: 10.0,
             pill_gap: 8.0,
             pill_max_width: 280.0,
-            dash_height: 6.0,
-            dash_width_rest: 26.0,
-            dash_width_focused: 42.0,
+            dash_height: 16.0,
+            dash_width_rest: 16.0,
+            dash_width_focused: 34.0,
             dash_width_stub: 10.0,
-            dash_gap: 8.0,
+            dash_gap: 5.0,
             popover_top: 72.0,
             popover_width: 440.0,
             notification_centre_width: 460.0,
