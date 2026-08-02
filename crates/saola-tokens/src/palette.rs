@@ -15,6 +15,35 @@ use serde::{Deserialize, Serialize};
 /// they're accent-tinted text colors for use in one context each:
 /// `accent_light` is accent-colored text *on ink*, `accent_dark` is
 /// accent-colored text *on paper*. Never introduce a fourth color.
+///
+/// # The session-status exception
+///
+/// The `status_*` fields at the bottom are the **one documented exception**
+/// to "three colors, never a fourth" (Jordan's decision, 2026-07-31). They
+/// are a *semaphore* family: five hues that encode the state of a Claude
+/// Code session at a glance, drawn as ~16 px round dots directly on ink in
+/// the panel. They exist because that readout has five mutually exclusive
+/// states which must be told apart *pre-attentively* — one accent and a set
+/// of alpha steps can distinguish "live" from "not live", but not
+/// "generating" from "needs you" from "done".
+///
+/// The scope of the exception is deliberately narrow, and nothing widens it
+/// without another explicit decision:
+///
+/// - **Status semaphores only.** Never a control fill, never a pill, never
+///   text, never a border, never a hover state. The one rule (ivory fill =
+///   at rest, terracotta fill = on/selected/live) still governs every
+///   interactive element in the system, unchanged.
+/// - There is still **no danger/success/warning color**:
+///   `status_attention` is red because it is one arm of a five-position
+///   semaphore, not because red means "error". Severity elsewhere is carried
+///   by wording, as before.
+/// - Every value stays in the muted, warm register that sits next to ivory
+///   and terracotta — none of these is a saturated "OS notification" hue.
+///
+/// The style helper that paints them is
+/// `saola_theme::style::container::status_dot`, which re-states this
+/// exception at the point of use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Palette {
@@ -28,6 +57,25 @@ pub struct Palette {
     pub accent_light: Color,
     /// Accent-colored *text on paper* only.
     pub accent_dark: Color,
+    /// Semaphore: the session is generating. Amber-gold, and deliberately
+    /// pushed off `accent`/`accent_light`'s hue so a working dot is never
+    /// mistaken for ordinary accent text on the bar. Breathes.
+    pub status_working: Color,
+    /// Semaphore: subagents are running under the session. Muted violet —
+    /// the one cool-ish hue in the family, since "something else is running
+    /// on your behalf" should not read as another shade of "you are busy".
+    /// Breathes.
+    pub status_subagents: Color,
+    /// Semaphore: the session is blocked on Jordan (a prompt, a permission,
+    /// a question). Muted brick red. Steady — the dot that wants attention
+    /// does not move, so movement on the bar always means "still running".
+    pub status_attention: Color,
+    /// Semaphore: the session finished and its output is awaiting review.
+    /// Muted steel blue. Steady.
+    pub status_done: Color,
+    /// Semaphore: a session is open with nothing happening in it. Sage
+    /// green, the quietest of the five. Steady.
+    pub status_idle: Color,
 }
 
 /// Hand-written rather than `#[derive(Default)]`: derive would give every
@@ -43,6 +91,17 @@ impl Default for Palette {
             accent: Color::rgb(0xC6, 0x71, 0x39),
             accent_light: Color::rgb(0xF6, 0xA0, 0x6B),
             accent_dark: Color::rgb(0x8C, 0x49, 0x1A),
+            // The session-status semaphore family (see the struct docs).
+            // Each was picked to clear 3:1 contrast against ink as a small
+            // non-text mark, to stay mutually distinguishable at 16 px
+            // (CIELAB ΔE ≥ 33 between any two of them), and — for
+            // `status_working` — to sit far enough from `accent`/
+            // `accent_light` (ΔE ≥ 22) not to read as terracotta.
+            status_working: Color::rgb(0xDD, 0xA2, 0x3F),
+            status_subagents: Color::rgb(0xA4, 0x81, 0xC7),
+            status_attention: Color::rgb(0xD0, 0x54, 0x4A),
+            status_done: Color::rgb(0x6D, 0x9E, 0xC6),
+            status_idle: Color::rgb(0x82, 0xA8, 0x78),
         }
     }
 }

@@ -11,6 +11,12 @@
     "accentLight": "#F6A06B",
     "accentDark": "#8C491A",
 
+    "statusWorking": "#DDA23F",
+    "statusSubagents": "#A481C7",
+    "statusAttention": "#D0544A",
+    "statusDone": "#6D9EC6",
+    "statusIdle": "#82A878",
+
     "onInk": {
       "primary": "rgba(255,255,240,1.00)",
       "secondary": "rgba(255,255,240,0.72)",
@@ -131,6 +137,7 @@
     "wake": { "duration": 450, "easing": "ease" },
     "progress": { "duration": 1000, "easing": "linear" },
     "bootRule": { "duration": 1800, "easing": "ease-in-out", "loop": true },
+    "breathe": { "duration": 2400, "easing": "ease-in-out", "loop": true, "minOpacity": 0.45 },
     "notification": {
       "slideIn": { "duration": 350, "easing": "ease-out", "from": "translateX(120%)" },
       "idle": { "duration": 5000 },

@@ -9,6 +9,12 @@
 //! press move through the alpha fill steps; everything is a pill or an
 //! over-rounded rectangle; keyboard focus is a 2 px terracotta ring.
 //!
+//! There is exactly one documented exception to "never a fourth": the
+//! session-status semaphore dots
+//! ([`style::container::status_dot`], [`saola_tokens::Palette`]'s `status_*`
+//! fields), five hues used only as small status marks on the panel and
+//! never as a control's fill.
+//!
 //! ```no_run
 //! use saola_theme::{style, Surface, Theme};
 //! use iced::widget::button;

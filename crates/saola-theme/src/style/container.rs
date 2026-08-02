@@ -107,6 +107,20 @@ pub fn popover(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
     }
 }
 
+/// An inset tile: the "subtle fill on a shell surface" shape
+/// [`translucent_panel`] has at `radii.pill`, here at `radii.tile` (13) —
+/// a recessed panel *inside* an ink or paper surface (the quick-settings
+/// popover's media row, a settings group). Unlike [`card`] it never casts a
+/// shadow and never goes solid: the fill is the surface's own `fill_subtle`
+/// role, so it reads as a recess, not a floating layer.
+pub fn tile(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+    let on = *t.on(s);
+    let background = on.fill_subtle.into_iced();
+    let text = on.primary.into_iced();
+    let radius = t.radii.tile;
+    move |_| surface(background, text, radius)
+}
+
 /// The urgent notification card (concept 10b): [`card`] plus a 2 px accent
 /// ring — "a terracotta ring and no life rule" (no fourth color, no
 /// vibrating/pulsing animation; the ring alone is what signals urgency).
@@ -204,6 +218,103 @@ pub fn dash(t: &Theme, state: DashState) -> impl Fn(&iced::Theme) -> Style {
         DashState::Stub => t.on_ink.disabled.into_iced(),
     };
     let radius = t.radii.pill;
+    move |_| Style {
+        background: Some(Background::Color(fill)),
+        border: Border {
+            color: Color::TRANSPARENT,
+            width: 0.0,
+            radius: radius.into(),
+        },
+        ..Style::default()
+    }
+}
+
+/// Which state one Claude Code session is in, as shown by its semaphore
+/// dot on the panel. Exactly five, mutually exclusive.
+///
+/// The two "still running" states ([`SessionStatus::Working`] and
+/// [`SessionStatus::Subagents`]) are the ones the consumer breathes; the
+/// other three are steady (pass `breath = 1.0`). That split is itself
+/// information: **movement on the bar always means work in progress.**
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionStatus {
+    /// Claude is generating. Amber-gold, breathing.
+    Working,
+    /// Subagents are running under this session. Violet, breathing.
+    Subagents,
+    /// Blocked on Jordan — a prompt, a permission, a question. Red, steady.
+    Attention,
+    /// Finished; the output is awaiting review. Blue, steady.
+    Done,
+    /// The session is open and nothing is happening. Green, steady.
+    Idle,
+}
+
+/// One session-status semaphore dot: a tiny circle sitting directly on the
+/// bar, painted in the [`SessionStatus`]'s color at `breath` opacity.
+///
+/// **Documented exception to "three colors, never a fourth"** (Jordan's
+/// decision, 2026-07-31). Everywhere else in Saola, state is carried by
+/// ivory-vs-terracotta and the alpha fill steps; here five *hues* carry it,
+/// because this one readout has five mutually exclusive states that have to
+/// be told apart at a glance, at 16 px, without reading any text. The
+/// exception is scoped to status semaphores: these colors never fill a
+/// control, a pill, a border, or text, and the one rule (ivory fill = at
+/// rest, terracotta fill = on/selected/live) is untouched everywhere else.
+/// See [`saola_tokens::Palette`]'s docs for the full statement of scope.
+///
+/// `breath` is the dot's opacity multiplier in `0.0..=1.0` — the consumer
+/// animates it between `motion.breathe_min_opacity` and `1.0` over
+/// `motion.breathe` ms for the two running states, and passes `1.0` for the
+/// three steady ones. It's clamped here rather than trusted: the caller is
+/// feeding this from an animation clock, and one overshooting frame
+/// producing an alpha of 1.02 (or a `NaN` from a bad division) should be a
+/// dot that looks right, not a rendering artifact. `f32::clamp` handles the
+/// overshoot; the explicit `is_finite` check handles `NaN`, which `clamp`
+/// would propagate.
+///
+/// Like [`dash`], this is ink-only (the bar is a shell surface, always ink)
+/// and geometry-free: the dot's diameter is the consumer's job via the
+/// `sizes.dash_*` tokens — `sizes.dash_height` square, closed into a circle
+/// by `radii.pill`, the same shape a rest dash already has. A dot carries no
+/// text, so no `text_color` is set.
+///
+/// ```no_run
+/// use saola_theme::style::container::{status_dot, SessionStatus};
+/// use saola_theme::Theme;
+/// use iced::widget::{container, Space};
+///
+/// let t = Theme::saola();
+/// let dot: iced::widget::Container<'_, ()> = container(Space::new())
+///     .style(status_dot(&t, SessionStatus::Attention, 1.0))
+///     .width(t.sizes.dash_height)
+///     .height(t.sizes.dash_height);
+/// ```
+pub fn status_dot(t: &Theme, status: SessionStatus, breath: f32) -> impl Fn(&iced::Theme) -> Style {
+    // Every token value is copied into a local *before* the `move` closure
+    // below: reading `t.*` inside the closure body would borrow the theme
+    // for the closure's whole life, which is the E0700 lifetime-capture
+    // error every helper in this crate is written to avoid.
+    let mut fill = match status {
+        SessionStatus::Working => t.palette.status_working,
+        SessionStatus::Subagents => t.palette.status_subagents,
+        SessionStatus::Attention => t.palette.status_attention,
+        SessionStatus::Done => t.palette.status_done,
+        SessionStatus::Idle => t.palette.status_idle,
+    }
+    .into_iced();
+    let radius = t.radii.pill;
+
+    let breath = if breath.is_finite() {
+        breath.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    // The status tokens are opaque, so scaling the alpha *is* the breath;
+    // doing it here (rather than in the closure) keeps the closure a plain
+    // copy of finished values.
+    fill.a *= breath;
+
     move |_| Style {
         background: Some(Background::Color(fill)),
         border: Border {

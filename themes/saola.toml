@@ -6,6 +6,11 @@ paper = "#fffff0"
 accent = "#c67139"
 accent_light = "#f6a06b"
 accent_dark = "#8c491a"
+status_working = "#dda23f"
+status_subagents = "#a481c7"
+status_attention = "#d0544a"
+status_done = "#6d9ec6"
+status_idle = "#82a878"
 
 [on_ink]
 primary = "#fffff0"
@@ -85,20 +90,21 @@ panel_margin_ledger = 20.0
 island_gap = 10.0
 pill_gap = 8.0
 pill_max_width = 280.0
-dash_height = 6.0
-dash_width_rest = 26.0
-dash_width_focused = 42.0
+dash_height = 16.0
+dash_width_rest = 16.0
+dash_width_focused = 34.0
 dash_width_stub = 10.0
-dash_gap = 8.0
+dash_gap = 5.0
 popover_top = 72.0
 popover_width = 440.0
+popover_padding = 20.0
 notification_centre_width = 460.0
 launcher_width = 640.0
 notification_card_width = 440.0
 list_row = 38.0
 hit_target_bar = 40.0
 hit_target_touch = 44.0
-icon_bar = 15.0
+icon_bar = 16.0
 icon_row = 16.0
 icon_menu = 19.0
 icon_bare = 32.0
@@ -137,6 +143,8 @@ toast_idle = 5000
 toast_out = 1000
 toast_total = 6350
 toast_max_stack = 3
+breathe = 2400
+breathe_min_opacity = 0.45
 
 [terminal]
 background = "#0c0a00"

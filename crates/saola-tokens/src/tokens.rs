@@ -163,6 +163,8 @@ pub struct Sizes {
     pub dash_gap: f32,
     pub popover_top: f32,
     pub popover_width: f32,
+    /// Content padding inside a popover panel (spec §6: "20–22px padding").
+    pub popover_padding: f32,
     pub notification_centre_width: f32,
     pub launcher_width: f32,
     pub notification_card_width: f32,
@@ -215,13 +217,18 @@ impl Default for Sizes {
             dash_gap: 5.0,
             popover_top: 72.0,
             popover_width: 440.0,
+            popover_padding: 20.0,
             notification_centre_width: 460.0,
             launcher_width: 640.0,
             notification_card_width: 440.0,
             list_row: 38.0,
             hit_target_bar: 40.0,
             hit_target_touch: 44.0,
-            icon_bar: 15.0,
+            // 16 (bumped from 15, 2026-08-01): the bar readouts went
+            // icon-only, so the glyph is the whole readout and earns the top
+            // of the style guide's 15–16 range — the leveled details
+            // (battery fill bars, Wi-Fi arcs) are what the extra pixel buys.
+            icon_bar: 16.0,
             icon_row: 16.0,
             icon_menu: 19.0,
             icon_bare: 32.0,
@@ -309,7 +316,12 @@ impl Default for Shadows {
 /// Easing curves and multi-step transform choreography (the JSON's
 /// `"easing"` and `"from"` string fields) are deliberately out of scope for
 /// v0.1.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// This struct derives `PartialEq` but not `Eq` (unlike most token groups,
+/// like most of the *color* groups): `breathe_min_opacity` is an `f32`, and
+/// floats have no total equality in Rust. [`Radii`] and [`Sizes`] are
+/// `PartialEq`-only for the same reason.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Motion {
     pub hover: u32,
@@ -320,6 +332,24 @@ pub struct Motion {
     pub toast_out: u32,
     pub toast_total: u32,
     pub toast_max_stack: u8,
+    /// One full breath of a session-status semaphore dot, in milliseconds:
+    /// the time for a breathing dot to fade down and back up *once*
+    /// (dim → bright → dim), not a half cycle. The panel drives it as a
+    /// smooth loop for the `status_working` / `status_subagents` states and
+    /// holds the other three steady.
+    ///
+    /// This is the only looping animation in Saola, and it is slow on
+    /// purpose — 2.4 s reads as breathing rather than blinking, and stays
+    /// below the flash thresholds that make motion an accessibility
+    /// problem. The opacity range it sweeps
+    /// (`breathe_min_opacity`..=1.0) lives beside it rather than being
+    /// hardcoded by the consumer.
+    pub breathe: u32,
+    /// The dimmest point of a breath, as an opacity multiplier on the dot's
+    /// fill (the brightest point is always 1.0). Not zero: a breathing dot
+    /// must never vanish, or the readout would look like it is blinking out
+    /// of existence rather than idling.
+    pub breathe_min_opacity: f32,
 }
 
 impl Default for Motion {
@@ -333,6 +363,8 @@ impl Default for Motion {
             toast_out: 1000,
             toast_total: 6350,
             toast_max_stack: 3,
+            breathe: 2400,
+            breathe_min_opacity: 0.45,
         }
     }
 }

@@ -36,7 +36,10 @@ Target: **stable iced 0.14** (`iced_layershell` 0.19.x tracks it). No zbus in th
   `#FFFFF0` (a control at rest; light window backgrounds), terracotta `#C67139`
   (on/selected/focused/live). `accent_light` is accent text on ink only; `accent_dark` is
   accent text on paper only. There is no danger/success/warning color — destructive
-  confirmation is a consumer pattern, not a palette entry.
+  confirmation is a consumer pattern, not a palette entry. One scoped exception (style
+  guide §1, "Session status semaphore," 2026-07-31): five `status_*` tokens for the
+  Claude Code session-status semaphore. Semaphore dots only — never a control, never a
+  fill, never a fourth "real" color.
 - **The one rule:** ivory fill = a control at rest (takes ink text); terracotta fill =
   on/selected/live (takes ivory text).
 - **Surface contexts replace dark/light variants.** The axis is `Surface::Ink` vs

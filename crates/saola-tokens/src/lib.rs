@@ -264,4 +264,170 @@ mod tests {
         let ratio = contrast_ratio(theme.palette.accent_dark, theme.palette.paper);
         assert!(ratio >= 3.0, "accent_dark/paper contrast was {ratio}");
     }
+
+    // ---- The session-status semaphore family ---------------------------
+    //
+    // The documented exception to "three colors, never a fourth" (see
+    // `Palette`'s docs). These five are drawn as ~16px dots on ink, so they
+    // are *non-text* marks: WCAG's 3:1 non-text contrast bar applies, not
+    // 4.5:1. They also have to stay apart from each other — a semaphore
+    // nobody can decode is worse than no semaphore — which is what the
+    // CIELAB ΔE test below pins down.
+
+    fn status_colors(theme: &Theme) -> [(&'static str, Color); 5] {
+        [
+            ("status_working", theme.palette.status_working),
+            ("status_subagents", theme.palette.status_subagents),
+            ("status_attention", theme.palette.status_attention),
+            ("status_done", theme.palette.status_done),
+            ("status_idle", theme.palette.status_idle),
+        ]
+    }
+
+    /// CIE L*a*b* coordinates (D65 white point) for a *fully opaque* color.
+    /// Contrast ratio answers "can I see it?"; ΔE answers "can I tell these
+    /// two apart?", which is the question a five-state semaphore actually
+    /// asks. Written out here rather than pulled in as a dependency —
+    /// `saola-tokens` deliberately depends on nothing but serde/toml/
+    /// thiserror, and dev-dependencies would still show up in that tree.
+    fn lab(c: Color) -> (f64, f64, f64) {
+        fn to_linear(channel: u8) -> f64 {
+            let c = f64::from(channel) / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        fn f(t: f64) -> f64 {
+            if t > 0.008_856 {
+                t.cbrt()
+            } else {
+                7.787 * t + 16.0 / 116.0
+            }
+        }
+        let (r, g, b) = (to_linear(c.r), to_linear(c.g), to_linear(c.b));
+        // sRGB -> XYZ, then normalized by the D65 white point.
+        let x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+        let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        let z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+        let (fx, fy, fz) = (f(x), f(y), f(z));
+        (116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz))
+    }
+
+    fn delta_e(a: Color, b: Color) -> f64 {
+        let (l1, a1, b1) = lab(a);
+        let (l2, a2, b2) = lab(b);
+        ((l1 - l2).powi(2) + (a1 - a2).powi(2) + (b1 - b2).powi(2)).sqrt()
+    }
+
+    #[test]
+    fn every_status_color_reads_as_a_mark_on_ink() {
+        let theme = Theme::saola();
+        for (name, color) in status_colors(&theme) {
+            let ratio = contrast_ratio(color, theme.palette.ink);
+            assert!(ratio >= 3.0, "{name}/ink contrast was {ratio}");
+        }
+    }
+
+    #[test]
+    fn status_colors_are_mutually_distinguishable() {
+        let theme = Theme::saola();
+        let colors = status_colors(&theme);
+        for (i, (name_a, a)) in colors.iter().enumerate() {
+            for (name_b, b) in &colors[i + 1..] {
+                let distance = delta_e(*a, *b);
+                assert!(
+                    distance >= 25.0,
+                    "{name_a} and {name_b} are only ΔE {distance} apart"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn status_working_is_distinct_from_the_accent_ramp() {
+        // The one status color that could plausibly be mistaken for the
+        // accent: both are warm oranges, and `accent_light` is already used
+        // as text on the same ink bar the dots sit on.
+        let theme = Theme::saola();
+        for (name, accent) in [
+            ("accent", theme.palette.accent),
+            ("accent_light", theme.palette.accent_light),
+        ] {
+            let distance = delta_e(theme.palette.status_working, accent);
+            assert!(
+                distance >= 20.0,
+                "status_working and {name} are only ΔE {distance} apart"
+            );
+        }
+    }
+
+    #[test]
+    fn a_dimmed_breath_still_scales_the_status_alpha() {
+        // The panel breathes a dot by scaling its fill alpha between
+        // `motion.breathe_min_opacity` and 1.0; at the dim end the dot must
+        // still be visible against ink, which is why the floor isn't 0.
+        let theme = Theme::saola();
+        let floor = theme.motion.breathe_min_opacity;
+        assert!((0.2..1.0).contains(&floor), "breathe floor was {floor}");
+
+        let alpha = (255.0 * floor).round() as u8;
+        for (name, color) in status_colors(&theme) {
+            let dimmed = Color::rgba(color.r, color.g, color.b, alpha).over(theme.palette.ink);
+            let ratio = contrast_ratio(dimmed, theme.palette.ink);
+            assert!(ratio > 1.4, "{name} at the breath floor was {ratio} on ink");
+        }
+    }
+
+    #[test]
+    fn partial_toml_keeps_the_status_family_and_breathe_defaults() {
+        // The serde-default guarantee for the new fields specifically: a
+        // theme file written before they existed (here, one that overrides
+        // only `palette.accent` and one motion duration) still parses, and
+        // still comes out with the real semaphore colors.
+        // `r##"…"##` rather than `r#"…"#`: the TOML below contains `"#`
+        // (the closing quote of a hex color), which would end an `r#` raw
+        // string early. Two hashes, and the delimiter is unambiguous again.
+        let parsed = Theme::from_toml_str(
+            r##"
+            [palette]
+            accent = "#C67139"
+
+            [motion]
+            hover = 200
+            "##,
+        )
+        .unwrap();
+
+        assert_eq!(parsed.palette, Theme::saola().palette);
+        assert_eq!(parsed.motion.hover, 200);
+        assert_eq!(parsed.motion.breathe, Theme::saola().motion.breathe);
+        assert_eq!(
+            parsed.motion.breathe_min_opacity,
+            Theme::saola().motion.breathe_min_opacity
+        );
+    }
+
+    #[test]
+    fn status_family_survives_a_toml_round_trip() {
+        let theme = Theme::saola();
+        let parsed = Theme::from_toml_str(&theme.to_toml_string().unwrap()).unwrap();
+        assert_eq!(parsed.palette.status_working, theme.palette.status_working);
+        assert_eq!(
+            parsed.palette.status_subagents,
+            theme.palette.status_subagents
+        );
+        assert_eq!(
+            parsed.palette.status_attention,
+            theme.palette.status_attention
+        );
+        assert_eq!(parsed.palette.status_done, theme.palette.status_done);
+        assert_eq!(parsed.palette.status_idle, theme.palette.status_idle);
+        assert_eq!(parsed.motion.breathe, theme.motion.breathe);
+        assert_eq!(
+            parsed.motion.breathe_min_opacity,
+            theme.motion.breathe_min_opacity
+        );
+    }
 }

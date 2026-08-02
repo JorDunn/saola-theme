@@ -19,7 +19,7 @@ use iced::widget::{
     slider, text, text_input, toggler, Space,
 };
 use iced::{Element, Fill, Size, Task};
-use saola_theme::style::container::DashState;
+use saola_theme::style::container::{DashState, SessionStatus};
 use saola_theme::{convert, style, Surface, Theme};
 
 /// The options shown in the Widgets page's pick list demo.
@@ -317,7 +317,86 @@ impl Gallery {
         .padding([0, 16])
         .align_y(iced::Center);
 
-        column![minimap, ledger, popover].spacing(16).into()
+        column![minimap, self.session_status_column(), ledger, popover]
+            .spacing(16)
+            .into()
+    }
+
+    /// The session-status semaphore: the five Claude Code session states as
+    /// dots, plus the breathing range the two "still running" states sweep.
+    ///
+    /// This is the design system's one documented exception to "three
+    /// colors, never a fourth" (see `style::container::status_dot`), so the
+    /// specimen states it in words as well as showing it. Ink-only, like
+    /// the rest of the panel section: these dots only ever sit on the bar.
+    ///
+    /// The gallery is a static catalog — it doesn't run an animation clock
+    /// — so the breath is shown as a filmstrip: the same dot at three
+    /// points of its cycle, which is also the clearest way to check the dim
+    /// end is still legible on ink.
+    fn session_status_column(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let caption_color = convert::ColorExt::into_iced(t.on_ink.tertiary);
+
+        let dot = |status: SessionStatus, breath: f32| {
+            container(Space::new())
+                .style(style::container::status_dot(t, status, breath))
+                .width(t.sizes.dash_height)
+                .height(t.sizes.dash_height)
+        };
+        // A dot over its label. `move` isn't needed: `dot` and the colors
+        // are borrowed for as long as this function's returned Element
+        // lives, which is the lifetime of the `&self` borrow anyway.
+        let labeled = |status: SessionStatus, breath: f32, label: &'static str| {
+            column![
+                dot(status, breath),
+                text(label)
+                    .size(t.typography.size.label)
+                    .color(caption_color),
+            ]
+            .spacing(6)
+            .align_x(iced::Center)
+        };
+
+        let states = row![
+            labeled(SessionStatus::Working, 1.0, "working"),
+            labeled(SessionStatus::Subagents, 1.0, "subagents"),
+            labeled(SessionStatus::Attention, 1.0, "attention"),
+            labeled(SessionStatus::Done, 1.0, "done"),
+            labeled(SessionStatus::Idle, 1.0, "idle"),
+        ]
+        .spacing(22)
+        .align_y(iced::Center);
+
+        // Dim end, midpoint, full — the three-frame filmstrip of one breath.
+        let floor = t.motion.breathe_min_opacity;
+        let mid = floor + (1.0 - floor) / 2.0;
+        let filmstrip = |status: SessionStatus| {
+            row![dot(status, floor), dot(status, mid), dot(status, 1.0)]
+                .spacing(8)
+                .align_y(iced::Center)
+        };
+
+        column![
+            text("Session status — the documented exception to the three-color rule")
+                .size(t.typography.size.secondary)
+                .color(caption_color),
+            states,
+            text(format!(
+                "Breathing (working · subagents): {} ms per cycle, opacity {floor:.2} → 1.00",
+                t.motion.breathe
+            ))
+            .size(t.typography.size.label)
+            .color(caption_color),
+            row![
+                filmstrip(SessionStatus::Working),
+                filmstrip(SessionStatus::Subagents),
+            ]
+            .spacing(24)
+            .align_y(iced::Center),
+        ]
+        .spacing(10)
+        .into()
     }
 
     /// A "On ink" / "On paper" caption above `content`, wrapping `content`
