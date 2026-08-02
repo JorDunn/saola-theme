@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.4.0...saola-theme-v0.5.0) - 2026-08-02
+
+### Added
+
+- add session-status semaphore tokens and status_dot helper
+- align column-strip dash with the islands concept
+
 ## [0.4.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.3.0...saola-theme-v0.4.0) - 2026-07-26
 
 ### Added
