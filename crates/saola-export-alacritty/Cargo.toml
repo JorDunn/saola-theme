@@ -1,6 +1,6 @@
 [package]
 name = "saola-export-alacritty"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license.workspace = true
 
@@ -9,6 +9,6 @@ license.workspace = true
 # at the last tag in git_only mode, and a path-only dependency here would
 # poison every future release-pr run (see CLAUDE.md, commit 957ee68). 0.3.0
 # is the currently released saola-tokens version (tag saola-tokens-v0.3.0).
-saola-tokens = { path = "../saola-tokens", version = "0.3.0" }
+saola-tokens = { path = "../saola-tokens", version = "0.4.0" }
 serde = { workspace = true }
 toml = { workspace = true }

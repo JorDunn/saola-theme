@@ -1,11 +1,11 @@
 [package]
 name = "saola-theme"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 license.workspace = true
 
 [dependencies]
-saola-tokens = { path = "../saola-tokens", version = "0.3.0" }
+saola-tokens = { path = "../saola-tokens", version = "0.4.0" }
 iced = { workspace = true }
 
 [dev-dependencies]
