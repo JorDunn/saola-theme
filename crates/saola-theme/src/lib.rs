@@ -38,6 +38,7 @@ pub mod avatar;
 pub mod canvas;
 pub mod convert;
 pub mod icon;
+pub mod marquee;
 pub mod motion;
 pub mod style;
 pub mod widget;
