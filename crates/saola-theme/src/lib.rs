@@ -26,14 +26,22 @@
 //!
 //! Layering: [`saola_tokens`] is pure data (no GUI dependencies); this crate
 //! is the only place tokens meet iced. The bridge lives in [`convert`], the
-//! per-widget styles in [`style`], and the few bundled widget constructors
-//! (where a token is a *size argument*, not a style field) in [`widget`].
+//! per-widget styles in [`style`], the few bundled widget constructors
+//! (where a token is a *size argument*, not a style field) in [`widget`],
+//! and the shared Lucide icon set (assets, [`icon::Icon`], the glyph
+//! ladders) in [`icon`].
 
 pub mod convert;
+pub mod icon;
 pub mod style;
 pub mod widget;
 
 pub use convert::{to_iced_theme, ColorExt, ShadowExt};
+// Like `iced::widget::svg`, `icon` is both this module and its constructor
+// function — modules and functions live in different namespaces, so the
+// common call `saola_theme::icon(...)` and the qualified
+// `saola_theme::icon::battery_icon(...)` both resolve.
+pub use icon::{icon, Icon};
 pub use saola_tokens::{Surface, Theme};
 
 /// The token crate, re-exported so consumers only depend on `saola-theme`.
