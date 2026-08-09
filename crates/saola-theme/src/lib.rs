@@ -29,10 +29,12 @@
 //! per-widget styles in [`style`], the few bundled widget constructors
 //! (where a token is a *size argument*, not a style field) in [`widget`],
 //! the pure animation math over the `motion.*` tokens (progress
-//! fractions, the toast envelope, the breathing curve) in [`motion`], and
-//! the shared Lucide icon set (assets, [`icon::Icon`], the glyph ladders)
-//! in [`icon`].
+//! fractions, the toast envelope, the breathing curve) in [`motion`], the
+//! shared Lucide icon set (assets, [`icon::Icon`], the glyph ladders) in
+//! [`icon`], and the token bridge for `canvas::Program` drawing (where
+//! iced styles can't reach at all) in [`canvas`].
 
+pub mod canvas;
 pub mod convert;
 pub mod icon;
 pub mod motion;
