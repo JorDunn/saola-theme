@@ -2,25 +2,32 @@
 //!
 //! Run with `cargo run -p saola-theme --example gallery`.
 //!
-//! Stage 6 scope: four pages — Widgets (every style helper, from Stage 5),
-//! Colors (every color token as labeled swatches), Typography (the three
-//! IBM Plex families + the full size scale), and Spacing (radii and size
-//! visualizers) — plus a runtime ink/paper surface toggle in the sidebar
-//! that proves the surface axis (the thing that replaces a dark/light
-//! theme pair in Saola) actually works at runtime, not just in style code.
+//! Four pages — Widgets (every style helper and bundled composite, from
+//! the Stage 5 controls through the upstreamed consumer kit: icons, text
+//! roles, scrims, marquee, avatar, selection chrome), Colors (every color
+//! token as labeled swatches), Typography (the three IBM Plex families +
+//! the full size scale), and Spacing (radii and size visualizers) — plus a
+//! runtime ink/paper surface toggle in the sidebar that proves the surface
+//! axis (the thing that replaces a dark/light theme pair in Saola)
+//! actually works at runtime, not just in style code.
 
 // Rust directory examples resolve modules relative to this file exactly
 // like a binary crate's `src/main.rs` would, so `mod pages;` here pulls in
 // `pages/mod.rs`, which in turn declares the three page submodules.
 mod pages;
 
+use std::time::Duration;
+
 use iced::widget::{
-    button, checkbox, column, container, pick_list, progress_bar, radio, row, rule, scrollable,
+    button, canvas, checkbox, column, container, pick_list, progress_bar, radio, row, scrollable,
     slider, text, text_input, toggler, Space,
 };
-use iced::{Element, Fill, Size, Task};
-use saola_theme::style::container::{DashState, SessionStatus};
-use saola_theme::{convert, style, widget, Surface, Theme};
+use iced::{Element, Fill, Point, Rectangle, Size, Task};
+use saola_theme::canvas::SelectionChrome;
+use saola_theme::marquee::marquee;
+use saola_theme::style::container::{DashState, ScrimKind, SessionStatus};
+use saola_theme::widget::Emphasis;
+use saola_theme::{avatar, convert, icon, style, widget, Icon, Surface, Theme};
 
 /// The options shown in the Widgets page's pick list demo.
 const PICK_LIST_OPTIONS: &[&str] = &["Ink", "Paper", "Terracotta"];
@@ -176,7 +183,7 @@ impl Gallery {
             nav("Colors", Page::Colors),
             nav("Typography", Page::Typography),
             nav("Spacing", Page::Spacing),
-            rule::horizontal(1).style(style::rule::rest(t, Surface::Ink)),
+            widget::hairline(t, Surface::Ink),
             // The surface toggle: a labeled toggler that just flips
             // `self.surface`. It lives on the sidebar, which is always
             // drawn on the ink shell, so it's always styled `Surface::Ink`
@@ -231,9 +238,33 @@ impl Gallery {
                 text("Kit").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.kit_column(primary)),
                 self.labeled_surface_row(secondary, self.kit_column(secondary)),
-                text("Rows & insets").size(t.typography.size.section_heading),
+                text("Rows, tiles & menus").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.rows_column(primary)),
                 self.labeled_surface_row(secondary, self.rows_column(secondary)),
+                text("Composites").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.composites_column(primary)),
+                self.labeled_surface_row(secondary, self.composites_column(secondary)),
+                text("Text roles").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.text_roles_column(primary)),
+                self.labeled_surface_row(secondary, self.text_roles_column(secondary)),
+                text("Status marks").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.status_marks_row(primary)),
+                self.labeled_surface_row(secondary, self.status_marks_row(secondary)),
+                text("Icons").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.icons_column(primary)),
+                self.labeled_surface_row(secondary, self.icons_column(secondary)),
+                // The remaining sections are shell chrome — scrims dim the
+                // wallpaper, the marquee and avatar are lock/panel pieces,
+                // and the selection chrome dims a capture surface — so like
+                // the Panel section they exist only on ink.
+                text("Scrims").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.scrims_column()),
+                text("Marquee").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.marquee_column()),
+                text("Avatar").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.avatar_row()),
+                text("Selection chrome").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.selection_chrome_pane()),
             ]
             .spacing(16)
             .width(Fill),
@@ -286,16 +317,16 @@ impl Gallery {
         .width(320);
 
         // The floating ledger bar: bar_pill chrome at panel_bar height, with
-        // the compact inner pills at their own heights (media 30, clock 32
-        // inside the 48 bar) and the bar/cluster gap tokens.
-        let inner_pill = |label: &'static str, height: f32| {
+        // the compact inner pills at their shared `panel_pill_clock` height
+        // (32 inside the 48 bar) and the bar/cluster gap tokens.
+        let inner_pill = |label: &'static str| {
             container(
                 text(label)
                     .font(convert::ui_font(t))
                     .size(t.typography.size.bar),
             )
             .style(style::container::translucent_panel(t))
-            .height(height)
+            .height(t.sizes.panel_pill_clock)
             .padding([0, 14])
             .align_y(iced::Center)
         };
@@ -309,8 +340,8 @@ impl Gallery {
                     .size(t.typography.size.bar)
                     .color(convert::ColorExt::into_iced(t.on_ink.tertiary)),
                 Space::new().width(Fill),
-                inner_pill("Nala Sinephro — Space 1.8", t.sizes.panel_pill_clock),
-                inner_pill("Fri 24 Jul · 09:41", t.sizes.panel_pill_clock),
+                inner_pill("Nala Sinephro — Space 1.8"),
+                inner_pill("Fri 24 Jul · 09:41"),
             ]
             .spacing(t.sizes.bar_element_gap)
             .align_y(iced::Center),
@@ -320,9 +351,28 @@ impl Gallery {
         .padding([0, 16])
         .align_y(iced::Center);
 
-        column![minimap, self.session_status_column(), ledger, popover]
-            .spacing(16)
-            .into()
+        // The islands trigger shape: `widget::hover_pill` owns the
+        // paint-order workaround (the hover-carrying bare button lives
+        // *inside* the ink pill, so its fill lands above the ink) — hover
+        // this pill to see the whole thing tint.
+        let island = widget::hover_pill(
+            t,
+            t.sizes.panel_pill,
+            text("Islands trigger")
+                .font(convert::ui_font(t))
+                .size(t.typography.size.bar),
+            Message::DemoPressed,
+        );
+
+        column![
+            minimap,
+            self.session_status_column(),
+            ledger,
+            island,
+            popover
+        ]
+        .spacing(16)
+        .into()
     }
 
     /// The session-status semaphore: the five Claude Code session states as
@@ -439,7 +489,7 @@ impl Gallery {
         let size = t.typography.size.body;
         let pad = [10, 18];
 
-        row![
+        let helpers = row![
             button(text("Rest").size(size))
                 .style(style::button::rest(t, s))
                 .padding(pad)
@@ -461,8 +511,24 @@ impl Gallery {
                 .style(style::button::rest(t, s))
                 .padding(pad),
         ]
-        .spacing(12)
-        .into()
+        .spacing(12);
+
+        // `emphasis`: `rest` or `active` behind one closure type, picked by
+        // a `bool` — the helper consumers use for a button that flips
+        // between the two states without duplicating the builder chain.
+        let emphasis_row = row![
+            button(text("Emphasis off").size(size))
+                .style(style::button::emphasis(t, s, false))
+                .padding(pad)
+                .on_press(Message::DemoPressed),
+            button(text("Emphasis on").size(size))
+                .style(style::button::emphasis(t, s, true))
+                .padding(pad)
+                .on_press(Message::DemoPressed),
+        ]
+        .spacing(12);
+
+        column![helpers, emphasis_row].spacing(12).into()
     }
 
     /// One column of every Stage 5 style helper (text input, checkbox,
@@ -497,7 +563,7 @@ impl Gallery {
             )
             .style(style::pick_list::field(t, s))
             .menu_style(style::pick_list::menu(t, s)),
-            rule::horizontal(1).style(style::rule::rest(t, s)),
+            widget::hairline(t, s),
             container(
                 scrollable(
                     column![
@@ -547,6 +613,23 @@ impl Gallery {
         ]
         .spacing(12);
 
+        // The quiet prompt pair: `rest`/`rejected`'s exact states over a
+        // translucent `fill_subtle` recess instead of the solid control
+        // fill — the lock screen's password field, and any lone field on a
+        // scrim. `prompt_rejected` keeps its tinted ring in every
+        // interactive state, exactly like `rejected` above.
+        let prompt_states = row![
+            text_input("Prompt", &self.kit_text_input_value)
+                .style(style::text_input::prompt(t, s))
+                .padding([10, 14])
+                .on_input(Message::KitTextInputChanged),
+            text_input("Prompt rejected", &self.kit_text_input_value)
+                .style(style::text_input::prompt_rejected(t, s))
+                .padding([10, 14])
+                .on_input(Message::KitTextInputChanged),
+        ]
+        .spacing(12);
+
         // Radio group: 9d's Ascending/Descending rows.
         let radios = row![
             radio(
@@ -584,9 +667,9 @@ impl Gallery {
                     .into()
             })
             .collect();
-        let segmented = container(row(segments).spacing(4))
+        let segmented = container(row(segments).spacing(t.sizes.segment_inset))
             .style(style::segmented::track(t, s))
-            .padding(4);
+            .padding(t.sizes.segment_inset);
 
         // The urgent notification card (10b): `card` plus a 2px accent
         // ring, no other change — "no life rule".
@@ -605,7 +688,29 @@ impl Gallery {
         .padding(18)
         .width(300);
 
-        // Keycap and badge chips.
+        // The §6 notification card: opaque ink with every color alpha-scaled
+        // by its `alpha` parameter, which exists for toast fades
+        // (`motion::toast_alpha` drives it) — a static catalog shows it at
+        // 1.0. Its content colors are named explicitly (`on_ink`, not
+        // `on(s)`): the card is ink on both surfaces.
+        let toast_card = container(
+            column![
+                text("Screenshot saved")
+                    .font(convert::display_font(t))
+                    .size(t.typography.size.section_heading),
+                text("~/Pictures/capture-0142.png")
+                    .size(t.typography.size.secondary)
+                    .color(convert::ColorExt::into_iced(t.on_ink.secondary)),
+            ]
+            .spacing(6),
+        )
+        .style(style::container::notification_card(t, 1.0))
+        .padding(18)
+        .width(300);
+
+        // Keycap and badge chips, plus the two static shapes: `chip` (a
+        // resting control's look with no hover — the ledger clock pill) and
+        // `disc` (`tile`'s recipe closed into a circle by `radii.pill`).
         let keycap = |label: &'static str| {
             container(
                 text(label)
@@ -620,54 +725,160 @@ impl Gallery {
                 .style(style::container::badge(t))
                 .padding([2, 8])
         };
+        let clock_chip = container(
+            text("Fri 24 Jul · 09:41")
+                .font(convert::ui_font(t))
+                .size(t.typography.size.bar),
+        )
+        .style(style::container::chip(t, s))
+        .padding([4, 12]);
+        let disc = container(
+            text("JD")
+                .font(convert::ui_font(t))
+                .size(t.typography.size.keycap),
+        )
+        .center_x(t.sizes.hit_target_bar)
+        .center_y(t.sizes.hit_target_bar)
+        .style(style::container::disc(t, s));
         let chips = row![
             keycap("↵"),
             keycap("⇥"),
             text("  "),
             badge("3"),
             badge("12"),
+            text("  "),
+            clock_chip,
+            disc,
         ]
         .spacing(8)
         .align_y(iced::Center);
 
-        column![text_input_states, radios, segmented, urgent_card, chips,]
-            .spacing(16)
-            .width(Fill)
-            .into()
+        column![
+            text_input_states,
+            prompt_states,
+            radios,
+            segmented,
+            urgent_card,
+            toast_card,
+            chips,
+        ]
+        .spacing(16)
+        .width(Fill)
+        .into()
     }
 
-    /// The file-manager kit: `button::list_row` rest + selected side by
-    /// side, the same rows composed inside a `container::inset` panel (the
-    /// sidebar/toolbar shape — `tile`'s recipe at `radii.inset`), and the
-    /// bundled `widget::hairline`/`vertical_hairline` constructors — in the
-    /// given surface context.
+    /// The file-manager kit: `button::list_row` rest/selected/focused side
+    /// by side, the same rows composed inside a `container::inset` panel
+    /// (the sidebar/toolbar shape — `tile`'s recipe at `radii.inset`), the
+    /// grid-view `selection_tile` twins, the `menu_row` treatment (styled
+    /// and bundled), and the `widget::hairline`/`vertical_hairline`
+    /// constructors — in the given surface context.
     fn rows_column(&self, s: Surface) -> Element<'_, Message> {
         let t = &self.theme;
         let size = t.typography.size.body;
 
-        let list_row = |label: &'static str, selected: bool| {
+        let list_row = |label: &'static str, selected: bool, focused: bool| {
             button(text(label).size(size))
-                .style(style::button::list_row(t, s, selected, false))
+                .style(style::button::list_row(t, s, selected, focused))
                 .padding([8, 14])
                 .on_press(Message::DemoPressed)
         };
 
-        // Rest and selected side by side, at their natural width.
-        let rows = row![list_row("Rest row", false), list_row("Selected row", true),].spacing(12);
+        // Rest, selected, and focused side by side, at their natural width.
+        // `focused` is the keyboard cursor: iced buttons have no
+        // `Status::Focused`, so the consumer tracks it and the row draws the
+        // 2 px accent ring in place of its transparent border.
+        let rows = row![
+            list_row("Rest row", false, false),
+            list_row("Selected row", true, false),
+            list_row("Focused row", false, true),
+        ]
+        .spacing(12);
 
         // The inset panel, filled the way a sidebar fills it: full-width
         // list rows on the recessed `fill_subtle` ground.
         let inset_panel = container(
             column![
-                list_row("Home", false).width(Fill),
-                list_row("Documents", true).width(Fill),
-                list_row("Trash", false).width(Fill),
+                list_row("Home", false, false).width(Fill),
+                list_row("Documents", true, false).width(Fill),
+                list_row("Trash", false, false).width(Fill),
             ]
-            .spacing(4),
+            .spacing(t.sizes.gap_tight),
         )
         .style(style::container::inset(t, s))
         .padding(10)
         .width(240);
+
+        // `selection_tile`: `list_row`'s exact recipe at `radii.tile` — the
+        // grid-view analogue of a list row, at the `grid_tile` geometry.
+        let tile = |label: &'static str, selected: bool, focused: bool| {
+            button(
+                container(text(label).size(t.typography.size.secondary))
+                    .align_x(iced::Center)
+                    .align_y(iced::Center)
+                    .width(Fill)
+                    .height(Fill),
+            )
+            .style(style::button::selection_tile(t, s, selected, focused))
+            .width(t.sizes.grid_tile)
+            .height(t.sizes.grid_tile)
+            .on_press(Message::DemoPressed)
+        };
+        let tiles = row![
+            tile("Rest", false, false),
+            tile("Selected", true, false),
+            tile("Focused", false, true),
+        ]
+        .spacing(t.sizes.grid_tile_gap);
+
+        // `menu_row`, both ways: the raw style helper (quiet at rest, full
+        // terracotta on hover — hover is the selection preview) and the
+        // bundled `widget::menu_row`, whose leading glyph takes its tint
+        // from `widget::role` because an `Svg`'s tint can't ride the button
+        // status. `menu_width` is the menu-scale width token.
+        let styled_menu_row = |label: &'static str, enabled: bool| {
+            let row = button(text(label).size(size))
+                .style(style::button::menu_row(t, s, enabled))
+                .width(Fill)
+                .padding(t.paddings.strip);
+            if enabled {
+                row.on_press(Message::DemoPressed)
+            } else {
+                row
+            }
+        };
+        let menu = container(
+            column![
+                styled_menu_row("Styled row — hover me", true),
+                styled_menu_row("Styled row — disabled", false),
+                widget::menu_row(
+                    t,
+                    s,
+                    Some(Icon::FolderOpen),
+                    "Open",
+                    widget::role(t, s, Emphasis::Rest),
+                    Some(Message::DemoPressed),
+                ),
+                widget::menu_row(
+                    t,
+                    s,
+                    Some(Icon::Pencil),
+                    "Rename",
+                    widget::role(t, s, Emphasis::Rest),
+                    Some(Message::DemoPressed),
+                ),
+                widget::menu_row(
+                    t,
+                    s,
+                    Some(Icon::Trash2),
+                    "Unavailable",
+                    widget::role(t, s, Emphasis::Disabled),
+                    None,
+                ),
+            ]
+            .spacing(2),
+        )
+        .width(t.sizes.menu_width);
 
         // The vertical hairline needs a bounded height to fill (a shrink
         // row would hand it no height at all), so the demo row is fixed.
@@ -680,9 +891,436 @@ impl Gallery {
         .height(24)
         .align_y(iced::Center);
 
-        column![rows, inset_panel, widget::hairline(t, s), vertical_demo]
-            .spacing(16)
+        column![
+            rows,
+            inset_panel,
+            tiles,
+            menu,
+            widget::hairline(t, s),
+            vertical_demo
+        ]
+        .spacing(16)
+        .width(Fill)
+        .into()
+    }
+
+    /// The bundled composite constructors from `widget`: the pill/icon
+    /// buttons (tokens for height, padding, and centering pre-applied), the
+    /// generic `segmented_row` (sharing the Kit section's selection state —
+    /// same control, one constructor call), and the small envelopes
+    /// (`section_label`, `quiet_row`, `separator`, `empty_state`,
+    /// `footer_strip`) — in the given surface context.
+    fn composites_column(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+
+        // `pill_button` = `button::emphasis` + `hit_target_bar` height +
+        // `paddings.pill_button` + the centering sandwich; `icon_button` is
+        // its icon-bearing sibling, whose tint is the caller's job (an
+        // `Svg`'s color can't follow the button's status), so the disabled
+        // one passes the disabled role by hand.
+        let buttons = row![
+            widget::pill_button(t, s, "Save", Some(Message::DemoPressed), true),
+            widget::pill_button(t, s, "Cancel", Some(Message::DemoPressed), false),
+            widget::pill_button(t, s, "Disabled", None, false),
+            widget::icon_button(
+                t,
+                s,
+                Icon::Check,
+                Some("Apply"),
+                widget::role(t, s, Emphasis::Rest),
+                Some(Message::DemoPressed),
+            ),
+            widget::icon_button(
+                t,
+                s,
+                Icon::X,
+                None,
+                widget::role(t, s, Emphasis::Rest),
+                Some(Message::DemoPressed),
+            ),
+            widget::icon_button(
+                t,
+                s,
+                Icon::RefreshCw,
+                None,
+                widget::role(t, s, Emphasis::Disabled),
+                None,
+            ),
+        ]
+        .spacing(12)
+        .align_y(iced::Center);
+
+        // The generic `segmented_row`, driving the same state as the Kit
+        // section's hand-assembled control — flipping one flips the other,
+        // which is the point: same tokens, one constructor call, and the
+        // assembled track totals exactly `hit_target_bar`.
+        let segmented = widget::segmented_row(
+            t,
+            s,
+            &[(0usize, "Files"), (1, "Folders"), (2, "All")],
+            &self.segment_selected,
+            Message::SegmentSelected,
+        );
+
+        // `empty_state` centers in all the space it's given, so the specimen
+        // hands it a bounded band.
+        let empty = container(widget::empty_state(t, s, "This folder is empty"))
             .width(Fill)
+            .height(90);
+
+        // `footer_strip`: the fixed-height card band a window docks its
+        // transient chrome into (a progress readout, an undo toast).
+        let footer = widget::footer_strip(
+            t,
+            s,
+            row![
+                widget::text::secondary(t, s, "Moving 3 items…"),
+                Space::new().width(Fill),
+                widget::pill_button(t, s, "Undo", Some(Message::DemoPressed), false),
+            ]
+            .spacing(12)
+            .align_y(iced::Center),
+        );
+
+        column![
+            buttons,
+            segmented,
+            widget::section_label(t, s, "PLACES"),
+            widget::quiet_row(t, s, "Media — no player"),
+            widget::separator(t, s),
+            empty,
+            footer,
+        ]
+        .spacing(16)
+        .width(Fill)
+        .into()
+    }
+
+    /// The five text roles from `widget::text` — pre-sized, pre-fonted,
+    /// pre-colored constructors, one per named role — in the given surface
+    /// context.
+    fn text_roles_column(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+        column![
+            widget::text::body(t, s, "Body — primary emphasis, regular UI face"),
+            widget::text::secondary(t, s, "Secondary — the detail line under a title"),
+            widget::text::label(t, s, "LABEL — MONO-MEDIUM, TERTIARY"),
+            widget::text::hint(t, s, "Hint — quaternary, quiet enough to ignore"),
+            widget::text::error(
+                t,
+                s,
+                "Error — accent text; severity is carried by the wording"
+            ),
+        ]
+        .spacing(8)
+        .into()
+    }
+
+    /// The `widget::Emphasis` ladder as labeled dots: the four-way status
+    /// mark role (`Live`/`Rest`/`Quiet`/`Disabled`) that picks the tint an
+    /// icon constructor takes. The dot itself is `widget::dot`, handed an
+    /// inline style painting `widget::role`'s color — the ladder is about
+    /// the *colors*, so the specimen paints them directly.
+    fn status_marks_row(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+        let caption = convert::ColorExt::into_iced(t.on(s).tertiary);
+        let radius = t.radii.pill;
+
+        let labeled = |emphasis: Emphasis, label: &'static str| {
+            let color = widget::role(t, s, emphasis);
+            column![
+                widget::dot(t.sizes.dash_height, move |_: &iced::Theme| {
+                    iced::widget::container::Style {
+                        background: Some(iced::Background::Color(color)),
+                        border: style::border_none(radius),
+                        ..Default::default()
+                    }
+                }),
+                text(label).size(t.typography.size.label).color(caption),
+            ]
+            .spacing(6)
+            .align_x(iced::Center)
+        };
+
+        row![
+            labeled(Emphasis::Live, "live"),
+            labeled(Emphasis::Rest, "rest"),
+            labeled(Emphasis::Quiet, "quiet"),
+            labeled(Emphasis::Disabled, "disabled"),
+        ]
+        .spacing(22)
+        .into()
+    }
+
+    /// The shared icon module: a sampling of `Icon` variants at the three
+    /// in-context icon sizes, then the leveled glyph ladders — the pure
+    /// state → glyph functions a bar readout and its popover both call, so
+    /// they can never drift onto different mappings.
+    fn icons_column<'a>(&'a self, s: Surface) -> Element<'a, Message> {
+        let t = &self.theme;
+        let tint = widget::role(t, s, Emphasis::Rest);
+        let caption = convert::ColorExt::into_iced(t.on(s).tertiary);
+        let label_size = t.typography.size.label;
+
+        // A caption column wide enough for the longest label, so the glyph
+        // rows line up into columns.
+        let captioned = |label: String, glyphs: Vec<Element<'a, Message>>| {
+            row![
+                container(text(label).size(label_size).color(caption)).width(150),
+                row(glyphs).spacing(t.sizes.pill_gap).align_y(iced::Center),
+            ]
+            .spacing(12)
+            .align_y(iced::Center)
+        };
+
+        const SAMPLE: [Icon; 8] = [
+            Icon::House,
+            Icon::Folder,
+            Icon::FileText,
+            Icon::Music,
+            Icon::Wifi,
+            Icon::BatteryFull,
+            Icon::Play,
+            Icon::Check,
+        ];
+        let strip = |name: &str, size: f32| {
+            let glyphs = SAMPLE
+                .iter()
+                .map(|kind| icon(*kind, size, tint).into())
+                .collect();
+            captioned(format!("{name} · {size:.0}px"), glyphs)
+        };
+        let ladder = |name: &'static str, kinds: Vec<Icon>| {
+            let glyphs = kinds
+                .into_iter()
+                .map(|kind| icon(kind, t.sizes.icon_menu, tint).into())
+                .collect();
+            captioned(name.to_owned(), glyphs)
+        };
+
+        column![
+            strip("icon_bar", t.sizes.icon_bar),
+            strip("icon_row", t.sizes.icon_row),
+            strip("icon_menu", t.sizes.icon_menu),
+            // Each ladder climbs its levels left to right, ending on the
+            // state that overrides the level (charging, mute, offline-first
+            // for Wi-Fi).
+            ladder(
+                "battery 5 → 90, charging",
+                vec![
+                    icon::battery_icon(5.0, false),
+                    icon::battery_icon(20.0, false),
+                    icon::battery_icon(50.0, false),
+                    icon::battery_icon(90.0, false),
+                    icon::battery_icon(50.0, true),
+                ],
+            ),
+            ladder(
+                "wi-fi off, 10 → 90",
+                vec![
+                    icon::wifi_icon(false, None),
+                    icon::wifi_icon(true, Some(10)),
+                    icon::wifi_icon(true, Some(30)),
+                    icon::wifi_icon(true, Some(60)),
+                    icon::wifi_icon(true, Some(90)),
+                ],
+            ),
+            ladder(
+                "volume 0 → 80, muted",
+                vec![
+                    icon::volume_icon(0, false),
+                    icon::volume_icon(30, false),
+                    icon::volume_icon(80, false),
+                    icon::volume_icon(50, true),
+                ],
+            ),
+            ladder(
+                "brightness 10 → 90",
+                vec![
+                    icon::brightness_icon(10),
+                    icon::brightness_icon(50),
+                    icon::brightness_icon(90),
+                ],
+            ),
+        ]
+        .spacing(10)
+        .into()
+    }
+
+    /// Every `ScrimKind` as a small labeled tile, drawn on a paper card —
+    /// paper stands in for the wallpaper each translucent ink scrim dims
+    /// (on the ink shell they'd all vanish into the background).
+    /// `lock_rest` paints its real three-stop gradient, the reason the
+    /// specimen exists as a *styled container* rather than the Colors
+    /// page's flat token swatches.
+    fn scrims_column(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let label_color = convert::ColorExt::into_iced(t.on_paper.secondary);
+        let label_size = t.typography.size.label;
+
+        let kinds: [(&'static str, ScrimKind); 10] = [
+            ("boot", ScrimKind::Boot),
+            ("shutdown", ScrimKind::Shutdown),
+            ("lock_awake", ScrimKind::LockAwake),
+            ("lock_rest ▒", ScrimKind::LockRest),
+            ("launcher", ScrimKind::Launcher),
+            ("overview", ScrimKind::Overview),
+            ("capture", ScrimKind::Capture),
+            ("modal", ScrimKind::Modal),
+            ("translucent_panel", ScrimKind::TranslucentPanel),
+            ("canvas", ScrimKind::Canvas),
+        ];
+        let tiles: Vec<Element<'_, Message>> = kinds
+            .into_iter()
+            .map(|(name, kind)| {
+                column![
+                    widget::swatch(108.0, 48.0, style::container::scrim(t, kind)),
+                    text(name).size(label_size).color(label_color),
+                ]
+                .spacing(t.sizes.gap_tight)
+                .width(108)
+                .into()
+            })
+            .collect();
+
+        // `row!` doesn't wrap, so the ten tiles are chunked by hand into
+        // rows of five (the Colors page's `swatch_grid` idiom; `Element`
+        // isn't `Clone`, so the Vec is consumed with `into_iter`).
+        let mut rows: Vec<Element<'_, Message>> = Vec::new();
+        let mut current: Vec<Element<'_, Message>> = Vec::new();
+        for tile in tiles {
+            current.push(tile);
+            if current.len() == 5 {
+                rows.push(row(std::mem::take(&mut current)).spacing(12).into());
+            }
+        }
+        if !current.is_empty() {
+            rows.push(row(current).spacing(12).into());
+        }
+
+        container(column(rows).spacing(12))
+            .style(style::container::paper_window(t))
+            .padding(20)
             .into()
+    }
+
+    /// The §5 ping-pong marquee at three fixed elapsed times — the gallery
+    /// is a static catalog with no animation clock, so like the semaphore's
+    /// breath this is a filmstrip of one run (dwell 2000 ms, then a
+    /// 24 px/s sweep: 0 ms parks at the head, the later frames sit
+    /// mid-sweep).
+    fn marquee_column(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let caption = convert::ColorExt::into_iced(t.on_ink.tertiary);
+        const TITLE: &str = "Nala Sinephro — Space 1.8 · 01 Space 1 (Continuum Mix, 2021 Remaster)";
+
+        let frame = |label: &'static str, ms: u64| {
+            column![
+                marquee(
+                    t,
+                    TITLE,
+                    Duration::from_millis(ms),
+                    24,
+                    t.typography.size.bar,
+                    convert::ColorExt::into_iced(t.on_ink.secondary),
+                ),
+                text(label).size(t.typography.size.label).color(caption),
+            ]
+            .spacing(t.sizes.gap_tight)
+        };
+
+        column![
+            frame("0 ms — dwelling at the head", 0),
+            frame("3000 ms — 1 s into the sweep", 3000),
+            frame("6000 ms — 4 s into the sweep", 6000),
+            text(format!(
+                "marquee_dwell {} ms · marquee_speed {} px/s — translation only, no fade",
+                t.motion.marquee_dwell, t.motion.marquee_speed
+            ))
+            .size(t.typography.size.label)
+            .color(caption),
+        ]
+        .spacing(10)
+        .into()
+    }
+
+    /// The §7 avatar composite, initials arm — the gallery bundles no photo
+    /// asset, and the initials disc is the part the design system owns end
+    /// to end (`initials_from` + `container::disc` + the
+    /// `avatar_initials`/`avatar_lock` tokens).
+    fn avatar_row(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let caption = convert::ColorExt::into_iced(t.on_ink.tertiary);
+        let initials = avatar::Avatar::Initials(avatar::initials_from("Jordan Dunn"));
+
+        row![
+            avatar::view(t, &initials, t.sizes.avatar_lock),
+            column![
+                text(format!("avatar_lock · {:.0}px", t.sizes.avatar_lock))
+                    .size(t.typography.size.label)
+                    .color(caption),
+                text("initials_from(\"Jordan Dunn\") → \"JD\"")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+        ]
+        .spacing(16)
+        .align_y(iced::Center)
+        .into()
+    }
+
+    /// The canvas-side token bridge: a small fixed scene painted by
+    /// `SelectionChrome` (capture scrim bands around a hole, the dashed
+    /// accent edge, the eight handles). Paper again stands in for the
+    /// content being captured, for the same reason as the scrim tiles.
+    fn selection_chrome_pane(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        canvas(SelectionDemo {
+            chrome: SelectionChrome::new(t, ScrimKind::Capture),
+            paper: convert::ColorExt::into_iced(t.palette.paper),
+        })
+        .width(320)
+        .height(180)
+        .into()
+    }
+}
+
+/// The Selection chrome section's `canvas::Program`: a static scene — no
+/// state, no interaction — that exercises the three `SelectionChrome`
+/// drawing operations on a fixed hole.
+struct SelectionDemo {
+    chrome: SelectionChrome,
+    /// The stand-in "content" fill behind the scrim (`palette.paper`).
+    paper: iced::Color,
+}
+
+impl<Message> canvas::Program<Message> for SelectionDemo {
+    type State = ();
+
+    fn draw(
+        &self,
+        _state: &Self::State,
+        renderer: &iced::Renderer,
+        _theme: &iced::Theme,
+        bounds: Rectangle,
+        _cursor: iced::mouse::Cursor,
+    ) -> Vec<canvas::Geometry> {
+        let mut frame = canvas::Frame::new(renderer, bounds.size());
+        // Frame coordinates are local, so the drawable area is the bounds'
+        // size at the origin — not `bounds` itself, which is in window
+        // space.
+        let outer = Rectangle::with_size(bounds.size());
+        let hole = Rectangle::new(
+            Point::new(outer.width * 0.3, outer.height * 0.28),
+            Size::new(outer.width * 0.4, outer.height * 0.44),
+        );
+
+        frame.fill_rectangle(Point::ORIGIN, outer.size(), self.paper);
+        self.chrome.fill_scrim_around(&mut frame, outer, hole);
+        self.chrome.stroke_dashed_edge(&mut frame, hole);
+        self.chrome.fill_handles(&mut frame, hole);
+
+        vec![frame.into_geometry()]
     }
 }
