@@ -34,7 +34,7 @@ use crate::convert::ColorExt;
 pub fn radio(
     t: &Theme,
     s: Surface,
-) -> impl Fn(&iced::Theme, radio_widget::Status) -> radio_widget::Style {
+) -> impl Fn(&iced::Theme, radio_widget::Status) -> radio_widget::Style + Clone {
     let colors = toggle_colors(t, s);
 
     move |_, status| {

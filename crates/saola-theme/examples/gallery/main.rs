@@ -647,7 +647,7 @@ impl Gallery {
 
         let list_row = |label: &'static str, selected: bool| {
             button(text(label).size(size))
-                .style(style::button::list_row(t, s, selected))
+                .style(style::button::list_row(t, s, selected, false))
                 .padding([8, 14])
                 .on_press(Message::DemoPressed)
         };

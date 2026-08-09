@@ -82,7 +82,7 @@ pub(crate) fn toggle_colors(t: &Theme, s: Surface) -> ToggleColors {
 pub fn checkbox(
     t: &Theme,
     s: Surface,
-) -> impl Fn(&iced::Theme, checkbox_widget::Status) -> checkbox_widget::Style {
+) -> impl Fn(&iced::Theme, checkbox_widget::Status) -> checkbox_widget::Style + Clone {
     let radius = t.radii.checkbox;
     let colors = toggle_colors(t, s);
     let on = *t.on(s);
@@ -143,7 +143,7 @@ pub fn checkbox(
 pub fn toggler(
     t: &Theme,
     s: Surface,
-) -> impl Fn(&iced::Theme, toggler_widget::Status) -> toggler_widget::Style {
+) -> impl Fn(&iced::Theme, toggler_widget::Status) -> toggler_widget::Style + Clone {
     let colors = toggle_colors(t, s);
     let on = *t.on(s);
 

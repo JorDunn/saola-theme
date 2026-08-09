@@ -7,27 +7,23 @@
 //! surface and it comes out ivory without further ceremony.
 
 use iced::widget::container::Style;
-use iced::{Background, Border, Color};
+use iced::{Background, Border};
 use saola_tokens::{Surface, Theme};
 
-use crate::convert::{ColorExt, ShadowExt};
+use crate::convert::{ColorExt, GradientExt, ShadowExt};
 
 /// A borderless rounded rectangle with a background and inherited text color.
 fn surface(background: iced::Color, text: iced::Color, radius: f32) -> Style {
     Style {
         text_color: Some(text),
         background: Some(Background::Color(background)),
-        border: Border {
-            color: Color::TRANSPARENT,
-            width: 0.0,
-            radius: radius.into(),
-        },
+        border: super::border_none(radius),
         ..Style::default()
     }
 }
 
 /// A shell surface: solid ink, edge to edge (no rounding), ivory text.
-pub fn ink_surface(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+pub fn ink_surface(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     let ink = t.palette.ink.into_iced();
     let text = t.on_ink.primary.into_iced();
     move |_| surface(ink, text, 0.0)
@@ -35,7 +31,7 @@ pub fn ink_surface(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
 
 /// A light application window: solid paper at the window radius, with the
 /// 2 px ink window border and the window shadow. Ink text.
-pub fn paper_window(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+pub fn paper_window(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     let paper = t.palette.paper.into_iced();
     let text = t.on_paper.primary.into_iced();
     let ink = t.palette.ink.into_iced();
@@ -56,7 +52,7 @@ pub fn paper_window(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
 /// A card at the card radius. On ink it is a solid ivory card (ink text,
 /// popover shadow — a notification card floating on the shell); on paper it
 /// is a subtle ink-fill inset of the window (no shadow).
-pub fn card(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+pub fn card(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let radius = t.radii.card;
     let text = t.on_paper.primary.into_iced();
     let (background, shadow) = match s {
@@ -74,7 +70,7 @@ pub fn card(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
 
 /// The translucent panel scrim as a pill — the bar's islands. The wallpaper
 /// shows through; text is ivory (the scrim is ink-tinted).
-pub fn translucent_panel(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+pub fn translucent_panel(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     let scrim = t.scrim.translucent_panel.into_iced();
     let text = t.on_ink.primary.into_iced();
     let radius = t.radii.pill;
@@ -86,7 +82,7 @@ pub fn translucent_panel(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
 /// ledger is a rounded pill, not an edge-to-edge strip), ivory text, no
 /// border or shadow. Ink-only shell chrome like [`translucent_panel`]
 /// (which is its translucent islands counterpart).
-pub fn bar_pill(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+pub fn bar_pill(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     let ink = t.palette.ink.into_iced();
     let text = t.on_ink.primary.into_iced();
     let radius = t.radii.pill;
@@ -96,7 +92,7 @@ pub fn bar_pill(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
 /// A popover: opaque ink at the popover radius with ivory text and the
 /// popover shadow. Popovers are shell chrome, so like [`ink_surface`] and
 /// [`translucent_panel`] this is ink-only — there is no paper popover.
-pub fn popover(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+pub fn popover(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     let ink = t.palette.ink.into_iced();
     let text = t.on_ink.primary.into_iced();
     let radius = t.radii.popover;
@@ -113,7 +109,7 @@ pub fn popover(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
 /// popover's media row, a settings group). Unlike [`card`] it never casts a
 /// shadow and never goes solid: the fill is the surface's own `fill_subtle`
 /// role, so it reads as a recess, not a floating layer.
-pub fn tile(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+pub fn tile(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let on = *t.on(s);
     let background = on.fill_subtle.into_iced();
     let text = on.primary.into_iced();
@@ -128,7 +124,7 @@ pub fn tile(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
 /// Like [`tile`], it never casts a shadow and never goes solid: the fill is
 /// the surface's own `fill_subtle` role, so it reads as a recess, not a
 /// floating layer.
-pub fn inset(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+pub fn inset(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let on = *t.on(s);
     let background = on.fill_subtle.into_iced();
     let text = on.primary.into_iced();
@@ -136,13 +132,14 @@ pub fn inset(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
     move |_| surface(background, text, radius)
 }
 
-/// The urgent notification card (concept 10b): [`card`] plus a 2 px accent
-/// ring — "a terracotta ring and no life rule" (no fourth color, no
-/// vibrating/pulsing animation; the ring alone is what signals urgency).
-pub fn card_urgent(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+/// The urgent notification card (concept 10b): [`card`] plus the accent
+/// ring (`sizes.ring`, via [`crate::style::accent_ring`]) — "a terracotta
+/// ring and no life rule" (no fourth color, no vibrating/pulsing animation;
+/// the ring alone is what signals urgency).
+pub fn card_urgent(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let radius = t.radii.card;
     let text = t.on_paper.primary.into_iced();
-    let accent = t.palette.accent.into_iced();
+    let ring = super::accent_ring(t, radius);
     let (background, shadow) = match s {
         Surface::Ink => (
             t.palette.paper.into_iced(),
@@ -151,11 +148,7 @@ pub fn card_urgent(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
         Surface::Paper => (t.on_paper.fill_subtle.into_iced(), None),
     };
     move |_| Style {
-        border: Border {
-            color: accent,
-            width: 2.0,
-            radius: radius.into(),
-        },
+        border: ring,
         shadow: shadow.unwrap_or_default(),
         ..surface(background, text, radius)
     }
@@ -167,7 +160,7 @@ pub fn card_urgent(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
 /// rather than competing with surrounding content. The mono font at
 /// `size.keycap` is the consumer's job (this helper only owns the chip's
 /// chrome, not the glyph inside it).
-pub fn keycap(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+pub fn keycap(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let radius = t.radii.selection;
     let border_width = t.sizes.hairline;
     let on = *t.on(s);
@@ -187,7 +180,7 @@ pub fn keycap(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
 /// ivory text, identical on both surfaces (the same "terracotta = live"
 /// recipe as [`crate::style::button::active`]), so this takes only the
 /// theme.
-pub fn badge(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+pub fn badge(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     let radius = t.radii.pill;
     let accent = t.palette.accent.into_iced();
     let text = t.palette.paper.into_iced();
@@ -227,7 +220,7 @@ pub enum DashState {
 /// Geometry — height, per-state widths, and the gap between dashes — comes
 /// from the `sizes.dash_*` tokens; the consumer sets them on the container.
 /// A dash carries no text, so no `text_color` is set.
-pub fn dash(t: &Theme, state: DashState) -> impl Fn(&iced::Theme) -> Style {
+pub fn dash(t: &Theme, state: DashState) -> impl Fn(&iced::Theme) -> Style + Clone {
     let fill = match state {
         DashState::Rest => t.on_ink.quaternary.into_iced(),
         DashState::Focused => t.palette.paper.into_iced(),
@@ -236,11 +229,7 @@ pub fn dash(t: &Theme, state: DashState) -> impl Fn(&iced::Theme) -> Style {
     let radius = t.radii.pill;
     move |_| Style {
         background: Some(Background::Color(fill)),
-        border: Border {
-            color: Color::TRANSPARENT,
-            width: 0.0,
-            radius: radius.into(),
-        },
+        border: super::border_none(radius),
         ..Style::default()
     }
 }
@@ -306,7 +295,11 @@ pub enum SessionStatus {
 ///     .width(t.sizes.dash_height)
 ///     .height(t.sizes.dash_height);
 /// ```
-pub fn status_dot(t: &Theme, status: SessionStatus, breath: f32) -> impl Fn(&iced::Theme) -> Style {
+pub fn status_dot(
+    t: &Theme,
+    status: SessionStatus,
+    breath: f32,
+) -> impl Fn(&iced::Theme) -> Style + Clone {
     // Every token value is copied into a local *before* the `move` closure
     // below: reading `t.*` inside the closure body would borrow the theme
     // for the closure's whole life, which is the E0700 lifetime-capture
@@ -333,22 +326,145 @@ pub fn status_dot(t: &Theme, status: SessionStatus, breath: f32) -> impl Fn(&ice
 
     move |_| Style {
         background: Some(Background::Color(fill)),
-        border: Border {
-            color: Color::TRANSPARENT,
-            width: 0.0,
-            radius: radius.into(),
-        },
+        border: super::border_none(radius),
         ..Style::default()
     }
 }
 
 /// A tooltip: solid ink at the tile radius with ivory text and the popover
 /// shadow — readable on either surface.
-pub fn tooltip(t: &Theme) -> impl Fn(&iced::Theme) -> Style {
+pub fn tooltip(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     let ink = t.palette.ink.into_iced();
     let text = t.on_ink.primary.into_iced();
     let radius = t.radii.tile;
     let shadow = t.shadows.popover.into_iced();
+    move |_| Style {
+        shadow,
+        ..surface(ink, text, radius)
+    }
+}
+
+/// Which wallpaper scrim [`scrim`] paints — one variant per field of the
+/// [`saola_tokens::Scrim`] token group, in the same order. The image behind
+/// never changes between shell states; only this ink overlay does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScrimKind {
+    /// Boot splash (`scrim.boot`, the heaviest flat scrim).
+    Boot,
+    /// Shutdown/reboot confirmation (`scrim.shutdown`).
+    Shutdown,
+    /// The lock/greeter after waking (`scrim.lock_awake`, flat).
+    LockAwake,
+    /// The lock/greeter at rest (`scrim.lock_rest`) — the one *gradient*
+    /// scrim: nearly clear above center where the clock sits, weighted at
+    /// both screen edges.
+    LockRest,
+    /// Behind the launcher (`scrim.launcher`).
+    Launcher,
+    /// Behind the workspace overview (`scrim.overview`).
+    Overview,
+    /// Behind the capture selection UI (`scrim.capture`).
+    Capture,
+    /// Behind a modal dialog (`scrim.modal`).
+    Modal,
+    /// The bar's translucent island fill (`scrim.translucent_panel`) — as a
+    /// full-bleed layer; the pill-shaped version is [`translucent_panel`].
+    TranslucentPanel,
+    /// Content-region dimming inside an editor (`scrim.canvas`) — e.g. the
+    /// capture editor dims everything outside the selection with this.
+    Canvas,
+}
+
+/// A wallpaper scrim as a full-bleed container: the [`ScrimKind`]'s
+/// ink-tinted fill edge to edge (no border, no rounding), with ivory
+/// (`on_ink.primary`) text for anything sitting on it — every scrim is ink
+/// at some opacity, so content on a scrim is in ink context.
+///
+/// [`ScrimKind::LockRest`] is the one gradient: the token's CSS-convention
+/// `angle_deg` maps straight onto iced's radians (same convention — see
+/// [`crate::convert::GradientExt`]) and its three stops become an
+/// `iced::gradient::Linear`, painted by iced as a real gradient fill.
+pub fn scrim(t: &Theme, kind: ScrimKind) -> impl Fn(&iced::Theme) -> Style + Clone {
+    let text = t.on_ink.primary.into_iced();
+    let background = match kind {
+        ScrimKind::Boot => Background::Color(t.scrim.boot.into_iced()),
+        ScrimKind::Shutdown => Background::Color(t.scrim.shutdown.into_iced()),
+        ScrimKind::LockAwake => Background::Color(t.scrim.lock_awake.into_iced()),
+        ScrimKind::LockRest => Background::Gradient(t.scrim.lock_rest.into_iced()),
+        ScrimKind::Launcher => Background::Color(t.scrim.launcher.into_iced()),
+        ScrimKind::Overview => Background::Color(t.scrim.overview.into_iced()),
+        ScrimKind::Capture => Background::Color(t.scrim.capture.into_iced()),
+        ScrimKind::Modal => Background::Color(t.scrim.modal.into_iced()),
+        ScrimKind::TranslucentPanel => Background::Color(t.scrim.translucent_panel.into_iced()),
+        ScrimKind::Canvas => Background::Color(t.scrim.canvas.into_iced()),
+    };
+    move |_| Style {
+        text_color: Some(text),
+        background: Some(background),
+        border: super::border_none(0.0),
+        ..Style::default()
+    }
+}
+
+/// A disc: [`tile`]'s exact recipe (the surface's `fill_subtle`, `primary`
+/// text) at `radii.pill`, which closes a square container into a circle —
+/// the avatar-initials disc on the lock screen and greeter (promoted from
+/// saola-lockscreen's `reveal::disc_style`). Size it square with
+/// `sizes.avatar_lock` and it is the §5 avatar circle.
+pub fn disc(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
+    let on = *t.on(s);
+    let background = on.fill_subtle.into_iced();
+    let text = on.primary.into_iced();
+    let radius = t.radii.pill;
+    move |_| surface(background, text, radius)
+}
+
+/// A static chip: the look of a resting control ([`crate::style::button::rest`]'s
+/// ivory-on-ink / fill-on-paper) with **no** hover or press states, for
+/// non-interactive pill readouts — the ledger bar's clock pill, a static
+/// tag. On paper the fill is pre-composited over paper with `Color::over`
+/// (a container has one flat background), so the chip is opaque on both
+/// surfaces. Ink text either way.
+///
+/// Exists because a *button* pinned to one status was the previous
+/// workaround (saola-panel's clock pins `Status::Active` inside a style
+/// closure to suppress hover on a non-control), which costs a pointless
+/// interaction surface just to borrow `rest`'s colors.
+pub fn chip(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
+    let radius = t.radii.pill;
+    let (background, text) = match s {
+        Surface::Ink => (t.palette.paper, t.palette.ink),
+        Surface::Paper => (t.on_paper.fill.over(t.palette.paper), t.on_paper.primary),
+    };
+    let background = background.into_iced();
+    let text = text.into_iced();
+    move |_| surface(background, text, radius)
+}
+
+/// The §6 notification card at `alpha` opacity: an **opaque-ink** card (ink
+/// background, ivory text, `radii.card`, popover shadow) with every color —
+/// including the shadow's — alpha-scaled by `alpha`.
+///
+/// The scaling exists because iced 0.14 has no subtree opacity: a toast
+/// fading in or out must scale the alpha of every color it paints
+/// (saola-capture's toast derived exactly this card locally, `scale_alpha`
+/// block included). Content *inside* the card fades the same way — scale
+/// its colors with [`crate::convert::ColorExt::with_opacity`] using the
+/// same `alpha`, typically [`crate::motion::toast_alpha`]'s output.
+///
+/// `alpha` is clamped to `0.0..=1.0` (a non-finite value reads as `1.0`) —
+/// like [`status_dot`]'s `breath`, it is usually fed from an animation
+/// clock, and an overshooting frame should look right, not glitch.
+pub fn notification_card(t: &Theme, alpha: f32) -> impl Fn(&iced::Theme) -> Style + Clone {
+    let alpha = if alpha.is_finite() {
+        alpha.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let ink = t.palette.ink.with_opacity(alpha);
+    let text = t.on_ink.primary.with_opacity(alpha);
+    let radius = t.radii.card;
+    let shadow = t.shadows.popover.with_opacity(alpha);
     move |_| Style {
         shadow,
         ..surface(ink, text, radius)

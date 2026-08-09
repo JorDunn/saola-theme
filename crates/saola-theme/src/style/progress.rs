@@ -12,7 +12,7 @@ use saola_tokens::{Surface, Theme};
 
 use crate::convert::ColorExt;
 
-pub fn bar(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+pub fn bar(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let track = t.on(s).track.into_iced();
     let accent = t.palette.accent.into_iced();
     let radius = t.radii.pill;

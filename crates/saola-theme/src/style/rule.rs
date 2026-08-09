@@ -9,7 +9,7 @@ use saola_tokens::{Surface, Theme};
 
 use crate::convert::ColorExt;
 
-pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let color = t.on(s).divider.into_iced();
 
     move |_| Style {
