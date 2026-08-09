@@ -20,7 +20,7 @@ use iced::widget::{
 };
 use iced::{Element, Fill, Size, Task};
 use saola_theme::style::container::{DashState, SessionStatus};
-use saola_theme::{convert, style, Surface, Theme};
+use saola_theme::{convert, style, widget, Surface, Theme};
 
 /// The options shown in the Widgets page's pick list demo.
 const PICK_LIST_OPTIONS: &[&str] = &["Ink", "Paper", "Terracotta"];
@@ -231,6 +231,9 @@ impl Gallery {
                 text("Kit").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.kit_column(primary)),
                 self.labeled_surface_row(secondary, self.kit_column(secondary)),
+                text("Rows & insets").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.rows_column(primary)),
+                self.labeled_surface_row(secondary, self.rows_column(secondary)),
             ]
             .spacing(16)
             .width(Fill),
@@ -628,6 +631,56 @@ impl Gallery {
         .align_y(iced::Center);
 
         column![text_input_states, radios, segmented, urgent_card, chips,]
+            .spacing(16)
+            .width(Fill)
+            .into()
+    }
+
+    /// The file-manager kit: `button::list_row` rest + selected side by
+    /// side, the same rows composed inside a `container::inset` panel (the
+    /// sidebar/toolbar shape — `tile`'s recipe at `radii.inset`), and the
+    /// bundled `widget::hairline`/`vertical_hairline` constructors — in the
+    /// given surface context.
+    fn rows_column(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+        let size = t.typography.size.body;
+
+        let list_row = |label: &'static str, selected: bool| {
+            button(text(label).size(size))
+                .style(style::button::list_row(t, s, selected))
+                .padding([8, 14])
+                .on_press(Message::DemoPressed)
+        };
+
+        // Rest and selected side by side, at their natural width.
+        let rows = row![list_row("Rest row", false), list_row("Selected row", true),].spacing(12);
+
+        // The inset panel, filled the way a sidebar fills it: full-width
+        // list rows on the recessed `fill_subtle` ground.
+        let inset_panel = container(
+            column![
+                list_row("Home", false).width(Fill),
+                list_row("Documents", true).width(Fill),
+                list_row("Trash", false).width(Fill),
+            ]
+            .spacing(4),
+        )
+        .style(style::container::inset(t, s))
+        .padding(10)
+        .width(240);
+
+        // The vertical hairline needs a bounded height to fill (a shrink
+        // row would hand it no height at all), so the demo row is fixed.
+        let vertical_demo = row![
+            text("Name").size(size),
+            widget::vertical_hairline(t, s),
+            text("Size").size(size),
+        ]
+        .spacing(12)
+        .height(24)
+        .align_y(iced::Center);
+
+        column![rows, inset_panel, widget::hairline(t, s), vertical_demo]
             .spacing(16)
             .width(Fill)
             .into()

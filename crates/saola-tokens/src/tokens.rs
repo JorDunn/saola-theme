@@ -142,6 +142,9 @@ pub struct Sizes {
     pub panel_bar: f32,
     pub panel_margin_islands: f32,
     pub panel_margin_ledger: f32,
+    /// Gap between free-standing chrome surfaces: panel islands over the
+    /// wallpaper, and equally an app window's outer gutter (saola-files
+    /// uses it as its window gutter).
     pub island_gap: f32,
     /// Gap between an icon and its label *inside* a pill (`island_gap` is
     /// the gap between pills).
@@ -178,8 +181,15 @@ pub struct Sizes {
     pub icon_bare: f32,
     /// Lucide icon stroke width, held constant at every icon size.
     pub icon_stroke: f32,
+    /// Thickness of a hairline rule/divider (e.g. under a title bar or a
+    /// column-header band) — distinct from `window_border` (2.0), which is
+    /// a border stroke, not a divider.
+    pub hairline: f32,
     pub window_border: f32,
     pub window_header: f32,
+    /// Standard width of an app window's navigation sidebar (e.g. the file
+    /// manager's places sidebar).
+    pub window_sidebar: f32,
     /// Height of the compact media pill *inside* the 48px ledger bar
     /// (smaller than `panel_pill`, which is a free-standing islands pill).
     pub panel_pill_media: f32,
@@ -233,8 +243,10 @@ impl Default for Sizes {
             icon_menu: 19.0,
             icon_bare: 32.0,
             icon_stroke: 2.75,
+            hairline: 1.0,
             window_border: 2.0,
             window_header: 46.0,
+            window_sidebar: 200.0,
             panel_pill_media: 30.0,
             panel_pill_clock: 32.0,
             panel_margin_ledger_top: 18.0,

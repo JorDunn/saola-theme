@@ -121,6 +121,21 @@ pub fn tile(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
     move |_| surface(background, text, radius)
 }
 
+/// An inset panel: [`tile`]'s exact recipe at `radii.inset` (20) instead of
+/// `radii.tile` (13). `tile` is for icon tiles (style guide §4); this is the
+/// window-scale recessed panel — a sidebar's places column, a header or
+/// trash toolbar, a confirm strip ("Inset panels, media rows | 18–22px").
+/// Like [`tile`], it never casts a shadow and never goes solid: the fill is
+/// the surface's own `fill_subtle` role, so it reads as a recess, not a
+/// floating layer.
+pub fn inset(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
+    let on = *t.on(s);
+    let background = on.fill_subtle.into_iced();
+    let text = on.primary.into_iced();
+    let radius = t.radii.inset;
+    move |_| surface(background, text, radius)
+}
+
 /// The urgent notification card (concept 10b): [`card`] plus a 2 px accent
 /// ring — "a terracotta ring and no life rule" (no fourth color, no
 /// vibrating/pulsing animation; the ring alone is what signals urgency).
@@ -154,13 +169,14 @@ pub fn card_urgent(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
 /// chrome, not the glyph inside it).
 pub fn keycap(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style {
     let radius = t.radii.selection;
+    let border_width = t.sizes.hairline;
     let on = *t.on(s);
     move |_| Style {
         text_color: Some(on.secondary.into_iced()),
         background: Some(Background::Color(on.fill_subtle.into_iced())),
         border: Border {
             color: on.fill.into_iced(),
-            width: 1.0,
+            width: border_width,
             radius: radius.into(),
         },
         ..Style::default()

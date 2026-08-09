@@ -26,10 +26,12 @@
 //!
 //! Layering: [`saola_tokens`] is pure data (no GUI dependencies); this crate
 //! is the only place tokens meet iced. The bridge lives in [`convert`], the
-//! per-widget styles in [`style`].
+//! per-widget styles in [`style`], and the few bundled widget constructors
+//! (where a token is a *size argument*, not a style field) in [`widget`].
 
 pub mod convert;
 pub mod style;
+pub mod widget;
 
 pub use convert::{to_iced_theme, ColorExt, ShadowExt};
 pub use saola_tokens::{Surface, Theme};

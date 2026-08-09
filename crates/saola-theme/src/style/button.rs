@@ -1,4 +1,4 @@
-//! Button styles: `rest`, `active`, `muted`, `bare`.
+//! Button styles: `rest`, `active`, `muted`, `bare`, `list_row`.
 //!
 //! The one rule, applied to buttons:
 //!
@@ -9,6 +9,8 @@
 //! - [`muted`] — muted / off-ish: a **subtle-fill** pill with a
 //!   secondary-emphasis label, quieter than `rest`.
 //! - [`bare`] — label only; hover/press surface it through the fill steps.
+//! - [`list_row`] — a content row (file listing, sidebar place): [`bare`]'s
+//!   progression at rest, [`active`]'s terracotta when `selected`.
 //!
 //! There is deliberately no `danger` variant: Saola has three colors, never
 //! a fourth. Destructive confirmation is a consumer *pattern* (wording,
@@ -147,6 +149,57 @@ pub fn muted(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
             on.disabled.into_iced(),
             radius,
         ),
+    }
+}
+
+/// A list/sidebar row — the style guide's §6 "List row" treatment, promoted
+/// from the three identical local derivations in saola-files
+/// (`dirview::list::row_style`, `dirview::grid::tile_style`,
+/// `sidebar::row_style`): a pill-radius row that is **transparent at rest**
+/// (the row is content sitting directly on its surface, not a control), and
+/// surfaces `fill_subtle` on hover, `fill` on press — [`bare`]'s
+/// progression, minus its label-only framing. Text at rest is the surface's
+/// primary role.
+///
+/// With `selected`, the one rule takes over: a terracotta fill with an
+/// ivory label across every state. Selected hover/press pre-composite the
+/// *surface's own* fill steps over the accent (`Color::over`; opaque base ⇒
+/// opaque result): on paper that is `on_paper.fill_subtle`/`fill` over
+/// accent — exactly the saola-files recipe — and on ink the ivory steps,
+/// which coincides with [`active`]'s treatment. In other words: hover on a
+/// selected row deepens through the same steps an unselected row uses, just
+/// pre-composited because the accent fill is opaque.
+///
+/// Rows are content, not controls, so `Status::Disabled` (which is also
+/// what a row without `.on_press` reports) draws exactly the rest state —
+/// matching the saola-files derivations' `_ =>` arms — rather than the
+/// grayed treatment the control helpers above use. The keyboard cursor is
+/// deliberately *not* a parameter: iced buttons have no `Status::Focused`,
+/// so consumers that track a cursor draw [`crate::style::focus_border`]
+/// around the row themselves.
+pub fn list_row(t: &Theme, s: Surface, selected: bool) -> impl Fn(&iced::Theme, Status) -> Style {
+    let radius = t.radii.pill;
+    let on = *t.on(s);
+    let accent = t.palette.accent;
+    let ivory = t.palette.paper;
+    let selected_hover = on.fill_subtle.over(accent);
+    let selected_press = on.fill.over(accent);
+    move |_, status| {
+        if selected {
+            let background = match status {
+                Status::Hovered => selected_hover,
+                Status::Pressed => selected_press,
+                Status::Active | Status::Disabled => accent,
+            };
+            pill(Some(background.into_iced()), ivory.into_iced(), radius)
+        } else {
+            let background = match status {
+                Status::Hovered => Some(on.fill_subtle.into_iced()),
+                Status::Pressed => Some(on.fill.into_iced()),
+                Status::Active | Status::Disabled => None,
+            };
+            pill(background, on.primary.into_iced(), radius)
+        }
     }
 }
 
