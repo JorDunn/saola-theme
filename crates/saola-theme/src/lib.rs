@@ -31,10 +31,13 @@
 //! the pure animation math over the `motion.*` tokens (progress
 //! fractions, the toast envelope, the breathing curve) in [`motion`], the
 //! shared Lucide icon set (assets, [`icon::Icon`], the glyph ladders) in
-//! [`icon`], and the token bridge for `canvas::Program` drawing (where
-//! iced styles can't reach at all) in [`canvas`].
+//! [`icon`], the token bridge for `canvas::Program` drawing (where
+//! iced styles can't reach at all) in [`canvas`], and the shared window
+//! chrome for ordinary decorationless toplevels (header, frame, resize
+//! grips, the transparent clear color) in [`chrome`].
 
 pub mod canvas;
+pub mod chrome;
 pub mod convert;
 pub mod icon;
 pub mod motion;
