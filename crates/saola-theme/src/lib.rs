@@ -36,10 +36,12 @@
 //! chrome for ordinary decorationless toplevels (header, frame, resize
 //! grips, the transparent clear color) in [`chrome`].
 
+pub mod avatar;
 pub mod canvas;
 pub mod chrome;
 pub mod convert;
 pub mod icon;
+pub mod marquee;
 pub mod motion;
 pub mod style;
 pub mod widget;
