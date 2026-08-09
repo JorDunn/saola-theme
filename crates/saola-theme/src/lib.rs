@@ -26,9 +26,12 @@
 //!
 //! Layering: [`saola_tokens`] is pure data (no GUI dependencies); this crate
 //! is the only place tokens meet iced. The bridge lives in [`convert`], the
-//! per-widget styles in [`style`], and the few bundled widget constructors
-//! (where a token is a *size argument*, not a style field) in [`widget`].
+//! per-widget styles in [`style`], the few bundled widget constructors
+//! (where a token is a *size argument*, not a style field) in [`widget`],
+//! and the token bridge for `canvas::Program` drawing (where iced styles
+//! can't reach at all) in [`canvas`].
 
+pub mod canvas;
 pub mod convert;
 pub mod style;
 pub mod widget;
