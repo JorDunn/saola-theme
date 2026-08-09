@@ -309,7 +309,7 @@ impl Gallery {
                     .size(t.typography.size.bar)
                     .color(convert::ColorExt::into_iced(t.on_ink.tertiary)),
                 Space::new().width(Fill),
-                inner_pill("Nala Sinephro — Space 1.8", t.sizes.panel_pill_media),
+                inner_pill("Nala Sinephro — Space 1.8", t.sizes.panel_pill_clock),
                 inner_pill("Fri 24 Jul · 09:41", t.sizes.panel_pill_clock),
             ]
             .spacing(t.sizes.bar_element_gap)
