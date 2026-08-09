@@ -13,6 +13,11 @@ thiserror = "2"
 # renderer choice): the shared icon module embeds and draws SVG assets
 # (`iced::widget::svg` only exists with "svg" on), and `saola_theme::canvas`
 # (the selection-chrome token bridge) is frame drawing that needs the
-# "canvas" widget API. Neither pulls in a renderer backend — that choice
+# "canvas" widget API. "image-without-codecs" exists for `saola_theme::avatar`:
+# it enables the `image` *widget* (the photo arm draws through it) while
+# deliberately leaving image *decoding* out — decoding stays with consumers,
+# who must hand this crate a pre-decoded `Handle::from_rgba` anyway (the
+# iced_wgpu synchronous-cache workaround saola-lockscreen documents in
+# `wallpaper.rs`). None of these pulls in a renderer backend — that choice
 # still belongs to consumers.
-iced = { version = "0.14", default-features = false, features = ["wayland", "thread-pool", "svg", "canvas"] }
+iced = { version = "0.14", default-features = false, features = ["wayland", "thread-pool", "svg", "canvas", "image-without-codecs"] }

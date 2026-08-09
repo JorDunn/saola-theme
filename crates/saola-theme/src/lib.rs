@@ -34,6 +34,7 @@
 //! [`icon`], and the token bridge for `canvas::Program` drawing (where
 //! iced styles can't reach at all) in [`canvas`].
 
+pub mod avatar;
 pub mod canvas;
 pub mod convert;
 pub mod icon;
