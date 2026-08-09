@@ -67,6 +67,7 @@ family_ui = "IBM Plex Sans"
 family_display = "IBM Plex Serif"
 family_mono = "IBM Plex Mono"
 minimum_bar_size = 13.0
+line_height = 1.25
 
 [typography.weight]
 regular = 400
@@ -86,6 +87,8 @@ secondary = 12.5
 meta = 12.0
 label = 11.0
 keycap = 11.0
+lock_date = 22.0
+avatar_initials = 22.0
 
 [radii]
 pill = 999.0
@@ -136,6 +139,49 @@ bar_element_gap = 14.0
 bar_cluster_gap = 15.0
 bar_icon_gap = 7.0
 media_title_max_width = 190.0
+ring = 2.0
+segment_inset = 4.0
+gap_tight = 4.0
+ops_strip = 56.0
+grid_tile = 96.0
+grid_tile_label = 34.0
+grid_tile_gap = 12.0
+menu_width = 250.0
+dialog_width = 380.0
+progress_girth = 6.0
+icon_tile = 36.0
+life_rule = 3.0
+avatar_lock = 88.0
+field_lock = 62.0
+lock_stack_gap = 20.0
+popover_separator_gap = 5.0
+track_inset = 4.0
+handle_radius = 5.0
+readout_width = 136.0
+selection_dash_fill = 6.0
+selection_dash_gap = 4.0
+
+[paddings]
+pill_button = [
+    6.0,
+    14.0,
+]
+icon_button = [
+    6.0,
+    12.0,
+]
+strip = [
+    6.0,
+    10.0,
+]
+breadcrumb = [
+    4.0,
+    10.0,
+]
+dialog_button = [
+    10.0,
+    16.0,
+]
 
 [shadows.popover]
 color = "#0c0a0080"
@@ -163,6 +209,9 @@ toast_total = 6350
 toast_max_stack = 3
 breathe = 2400
 breathe_min_opacity = 0.45
+flash = 150
+marquee_dwell = 2000
+marquee_speed = 24.0
 
 [terminal]
 background = "#0c0a00"

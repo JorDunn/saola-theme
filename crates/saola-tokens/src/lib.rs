@@ -42,7 +42,8 @@ use serde::{Deserialize, Serialize};
 pub use color::{Color, ColorParseError};
 pub use palette::{GradientStop, OnSurface, Palette, Scrim, ScrimGradient, Surface};
 pub use tokens::{
-    AnsiColors, FontSizes, FontWeights, Motion, Radii, Shadow, Shadows, Sizes, Terminal, Typography,
+    AnsiColors, FontSizes, FontWeights, Motion, Paddings, Radii, Shadow, Shadows, Sizes, Terminal,
+    Typography,
 };
 
 /// A complete Saola theme: the color identity, both on-surface role sets,
@@ -65,6 +66,7 @@ pub struct Theme {
     pub typography: Typography,
     pub radii: Radii,
     pub sizes: Sizes,
+    pub paddings: Paddings,
     pub shadows: Shadows,
     pub motion: Motion,
     pub terminal: Terminal,
@@ -82,6 +84,7 @@ impl Theme {
             typography: Typography::default(),
             radii: Radii::default(),
             sizes: Sizes::default(),
+            paddings: Paddings::default(),
             shadows: Shadows::default(),
             motion: Motion::default(),
             terminal: Terminal::default(),
