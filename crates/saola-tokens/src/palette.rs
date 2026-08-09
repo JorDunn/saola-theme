@@ -145,20 +145,34 @@ pub struct OnSurface {
 
 impl OnSurface {
     /// Ivory (`paper`) stepped with alpha, for use on ink surfaces.
+    ///
+    /// Thin wrapper over [`OnSurface::on_ink_from`] with the built-in Saola
+    /// paper color.
     pub fn on_ink() -> Self {
+        Self::on_ink_from(Palette::default().paper)
+    }
+
+    /// The on-ink alpha ladder applied to a caller-supplied `paper` color —
+    /// for consumers that override `palette.paper` (e.g. saola-panel's
+    /// `colors { }` KDL block) and need every text/divider/fill role
+    /// re-stepped from *their* paper, not the built-in ivory.
+    ///
+    /// Only `paper`'s RGB channels are used; each role gets the ladder's own
+    /// alpha byte (`primary` is fully opaque).
+    pub fn on_ink_from(paper: Color) -> Self {
         // Alpha channels below are `round(cssAlpha * 255)` from
         // `design/saola-tokens.json`'s `color.onInk` object.
-        let step = |a: u8| Color::rgba(0xFF, 0xFF, 0xF0, a);
+        let step = |a: u8| Color::rgba(paper.r, paper.g, paper.b, a);
         OnSurface {
-            primary: Color::rgb(0xFF, 0xFF, 0xF0), // rgba(..., 1.00) -> opaque
-            secondary: step(184),                  // 0.72
-            tertiary: step(140),                   // 0.55
-            quaternary: step(102),                 // 0.40
-            disabled: step(89),                    // 0.35
-            divider: step(31),                     // 0.12
-            fill_subtle: step(18),                 // 0.07
-            fill: step(31),                        // 0.12
-            fill_strong: step(41),                 // 0.16
+            primary: step(255),    // rgba(..., 1.00) -> opaque
+            secondary: step(184),  // 0.72
+            tertiary: step(140),   // 0.55
+            quaternary: step(102), // 0.40
+            disabled: step(89),    // 0.35
+            divider: step(31),     // 0.12
+            fill_subtle: step(18), // 0.07
+            fill: step(31),        // 0.12
+            fill_strong: step(41), // 0.16
             // The JSON's onInk object has no `track` — onInk is the
             // strongest fill it defines, per Architecture.
             track: step(41),
@@ -166,20 +180,32 @@ impl OnSurface {
     }
 
     /// Ink stepped with alpha, for use on paper (ivory window) surfaces.
+    ///
+    /// Thin wrapper over [`OnSurface::on_paper_from`] with the built-in
+    /// Saola ink color.
     pub fn on_paper() -> Self {
+        Self::on_paper_from(Palette::default().ink)
+    }
+
+    /// The on-paper alpha ladder applied to a caller-supplied `ink` color —
+    /// the paper-surface counterpart of [`OnSurface::on_ink_from`].
+    ///
+    /// Only `ink`'s RGB channels are used; each role gets the ladder's own
+    /// alpha byte (`primary` is fully opaque).
+    pub fn on_paper_from(ink: Color) -> Self {
         // Alpha channels below are `round(cssAlpha * 255)` from the JSON's
         // `color.onPaper` object.
-        let step = |a: u8| Color::rgba(0x0C, 0x0A, 0x00, a);
+        let step = |a: u8| Color::rgba(ink.r, ink.g, ink.b, a);
         OnSurface {
-            primary: Color::rgb(0x0C, 0x0A, 0x00), // rgba(..., 1.00) -> opaque
-            secondary: step(179),                  // 0.70
-            tertiary: step(140),                   // 0.55
-            quaternary: step(115),                 // 0.45
-            disabled: step(89),                    // 0.35
-            divider: step(26),                     // 0.10
-            fill_subtle: step(10),                 // 0.04
-            fill: step(20),                        // 0.08
-            track: step(36),                       // 0.14
+            primary: step(255),    // rgba(..., 1.00) -> opaque
+            secondary: step(179),  // 0.70
+            tertiary: step(140),   // 0.55
+            quaternary: step(115), // 0.45
+            disabled: step(89),    // 0.35
+            divider: step(26),     // 0.10
+            fill_subtle: step(10), // 0.04
+            fill: step(20),        // 0.08
+            track: step(36),       // 0.14
             // The JSON's onPaper object has no `fillStrong` — onPaper's
             // track *is* its strongest fill, per Architecture.
             fill_strong: step(36),
@@ -215,11 +241,16 @@ pub struct Scrim {
     pub translucent_panel: Color,
 }
 
-impl Default for Scrim {
-    fn default() -> Self {
+impl Scrim {
+    /// Re-derive every scrim entry from a custom ink color — the scrim
+    /// counterpart of [`OnSurface::on_ink_from`]/[`OnSurface::on_paper_from`],
+    /// for consumers that override `palette.ink`. Only `ink`'s RGB channels
+    /// are used; each entry gets its own alpha byte (the same bytes as the
+    /// built-in default).
+    pub fn from_ink(ink: Color) -> Self {
         // Alpha channels are `round(cssAlpha * 255)` from the JSON's
         // `color.scrim` object; all scrims are ink-tinted.
-        let step = |a: u8| Color::rgba(0x0C, 0x0A, 0x00, a);
+        let step = |a: u8| Color::rgba(ink.r, ink.g, ink.b, a);
         Scrim {
             boot: step(199),              // 0.78
             shutdown: step(224),          // 0.88
@@ -230,6 +261,12 @@ impl Default for Scrim {
             modal: step(158),             // 0.62
             translucent_panel: step(153), // 0.60
         }
+    }
+}
+
+impl Default for Scrim {
+    fn default() -> Self {
+        Scrim::from_ink(Palette::default().ink)
     }
 }
 

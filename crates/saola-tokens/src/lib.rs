@@ -88,6 +88,31 @@ impl Theme {
         }
     }
 
+    /// A full theme built from [`Theme::saola`] but with the given palette,
+    /// with the derived color families re-stepped from it: `on_ink` from
+    /// `palette.paper` ([`OnSurface::on_ink_from`]), `on_paper` from
+    /// `palette.ink` ([`OnSurface::on_paper_from`]), and every scrim from
+    /// `palette.ink` ([`Scrim::from_ink`]).
+    ///
+    /// This is the constructor for consumers that let users override the
+    /// identity colors (e.g. saola-panel's `colors { }` config block) —
+    /// without it, an overridden `palette` leaves every text/divider/fill
+    /// role stepped from the *built-in* ink and paper.
+    ///
+    /// `accent_light` and `accent_dark` are the caller's responsibility:
+    /// they are independent palette entries (accent-tinted text colors for
+    /// one surface each), not derivable from `accent`, so this constructor
+    /// uses them exactly as passed in.
+    pub fn with_palette(palette: Palette) -> Self {
+        Theme {
+            on_ink: OnSurface::on_ink_from(palette.paper),
+            on_paper: OnSurface::on_paper_from(palette.ink),
+            scrim: Scrim::from_ink(palette.ink),
+            palette,
+            ..Theme::saola()
+        }
+    }
+
     /// The role set for a given surface context — the selector every style
     /// helper in `saola-theme` calls to find out which alpha-stepped colors
     /// to use.
@@ -172,6 +197,64 @@ mod tests {
     #[test]
     fn default_equals_saola() {
         assert_eq!(Theme::default(), Theme::saola());
+    }
+
+    #[test]
+    fn with_palette_rederives_roles_from_the_custom_colors() {
+        let custom_ink = Color::rgb(0x1A, 0x14, 0x22);
+        let custom_paper = Color::rgb(0xF2, 0xEE, 0xFF);
+        let palette = Palette {
+            ink: custom_ink,
+            paper: custom_paper,
+            ..Palette::default()
+        };
+        let theme = Theme::with_palette(palette);
+
+        // Every on-paper role must carry the custom ink's RGB (the alpha
+        // ladder is what varies per role, never the base color)...
+        for role in [
+            theme.on_paper.primary,
+            theme.on_paper.secondary,
+            theme.on_paper.tertiary,
+            theme.on_paper.quaternary,
+            theme.on_paper.disabled,
+            theme.on_paper.divider,
+            theme.on_paper.fill_subtle,
+            theme.on_paper.fill,
+            theme.on_paper.fill_strong,
+            theme.on_paper.track,
+        ] {
+            assert_eq!((role.r, role.g, role.b), (0x1A, 0x14, 0x22));
+        }
+        // ...and likewise on-ink roles carry the custom paper, and scrims
+        // the custom ink.
+        assert_eq!(
+            (
+                theme.on_ink.primary.r,
+                theme.on_ink.primary.g,
+                theme.on_ink.primary.b
+            ),
+            (0xF2, 0xEE, 0xFF)
+        );
+        assert_eq!(
+            (
+                theme.scrim.lock_awake.r,
+                theme.scrim.lock_awake.g,
+                theme.scrim.lock_awake.b
+            ),
+            (0x1A, 0x14, 0x22)
+        );
+        // Alpha bytes are unchanged from the built-in ladder.
+        assert_eq!(
+            theme.on_paper.secondary.a,
+            Theme::saola().on_paper.secondary.a
+        );
+        assert_eq!(theme.scrim.lock_awake.a, Theme::saola().scrim.lock_awake.a);
+    }
+
+    #[test]
+    fn with_palette_of_the_default_palette_is_saola() {
+        assert_eq!(Theme::with_palette(Palette::default()), Theme::saola());
     }
 
     #[test]
