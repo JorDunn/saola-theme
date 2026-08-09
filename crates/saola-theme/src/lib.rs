@@ -32,9 +32,11 @@
 //! fractions, the toast envelope, the breathing curve) in [`motion`], the
 //! shared Lucide icon set (assets, [`icon::Icon`], the glyph ladders) in
 //! [`icon`], the token bridge for `canvas::Program` drawing (where
-//! iced styles can't reach at all) in [`canvas`], and the shared window
+//! iced styles can't reach at all) in [`canvas`], the shared window
 //! chrome for ordinary decorationless toplevels (header, frame, resize
-//! grips, the transparent clear color) in [`chrome`].
+//! grips, the transparent clear color) in [`chrome`], the §7 avatar
+//! composite (photo resolution, initials fallback, the disc view) in
+//! [`avatar`], and the §5 ping-pong text marquee in [`marquee`].
 
 pub mod avatar;
 pub mod canvas;

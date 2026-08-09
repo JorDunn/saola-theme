@@ -39,10 +39,12 @@ runtime.
 ## What's inside
 
 - **`saola-tokens`** — the design tokens as pure data (serde + TOML, zero GUI
-  dependencies), so the same identity can later be exported to GRUB, Plymouth, or
+  dependencies), so the same identity can be exported to GRUB, Plymouth, or
   terminal configs.
 - **`saola-theme`** — style helpers for [iced](https://iced.rs) 0.14. This is what
   Saola apps import.
+- **`saola-export-alacritty`** — the first such exporter: prints an Alacritty
+  `colors.*` config for a theme.
 
 ## Use it
 
@@ -64,8 +66,8 @@ each module cover the rest.
 
 ## Status
 
-v0.1 — the first piece of Saola, built ahead of the desktop itself. Expect the API to
-move while the panel and greeter take shape.
+Pre-1.0 — the first piece of Saola, built ahead of the desktop itself. Expect the API
+to keep moving while the shell components take shape around it.
 
 ## License
 
