@@ -26,14 +26,17 @@
 //!
 //! Layering: [`saola_tokens`] is pure data (no GUI dependencies); this crate
 //! is the only place tokens meet iced. The bridge lives in [`convert`], the
-//! per-widget styles in [`style`], and the few bundled widget constructors
-//! (where a token is a *size argument*, not a style field) in [`widget`].
+//! per-widget styles in [`style`], the few bundled widget constructors
+//! (where a token is a *size argument*, not a style field) in [`widget`],
+//! and the pure animation math over the `motion.*` tokens (progress
+//! fractions, the toast envelope, the breathing curve) in [`motion`].
 
 pub mod convert;
+pub mod motion;
 pub mod style;
 pub mod widget;
 
-pub use convert::{to_iced_theme, ColorExt, ShadowExt};
+pub use convert::{to_iced_theme, ColorExt, GradientExt, ShadowExt};
 pub use saola_tokens::{Surface, Theme};
 
 /// The token crate, re-exported so consumers only depend on `saola-theme`.
