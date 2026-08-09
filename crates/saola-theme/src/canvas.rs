@@ -33,54 +33,39 @@ use iced::{Point, Rectangle};
 use crate::convert::ColorExt;
 use crate::Theme;
 
-/// Dash pattern of a selection edge: 6 px of accent, 4 px of gap.
-///
-/// A design value that is not yet a token (`saola-tokens` has no
-/// `sizes.selection_dash_*` fields); it is declared once here so consumers
-/// stop re-declaring `[6.0, 4.0]` locally.
-pub const SELECTION_DASH_SEGMENTS: [f32; 2] = [6.0, 4.0];
+// The scrim vocabulary is shared with the container helper — one enum for
+// both "scrim as a full-bleed container" and "scrim as canvas bands".
+pub use crate::style::container::ScrimKind;
 
-/// Drawn radius of a selection resize handle, in logical pixels.
+/// Resolves a [`ScrimKind`] to the flat color a canvas band is filled with.
 ///
-/// Like [`SELECTION_DASH_SEGMENTS`], a design value that is not yet a token
-/// (`saola-tokens` has no `sizes.handle_radius`). Hit radii are deliberately
-/// *not* here — how far a press can miss a handle is input policy, which
-/// belongs to the consumer, not the design system.
-pub const HANDLE_RADIUS: f32 = 5.0;
-
-/// Which of the theme's scrims dims the surround.
-///
-/// Mirrors the fields of [`saola_tokens::Scrim`] one-to-one, so a canvas
-/// surface names its shell state (`Capture` for the full-output capture
-/// overlay, `Modal` for a windowed editor's region dimming, …) instead of
-/// reaching into the struct itself.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScrimKind {
-    Boot,
-    Shutdown,
-    LockAwake,
-    Launcher,
-    Overview,
-    Capture,
-    Modal,
-    TranslucentPanel,
-}
-
-impl ScrimKind {
-    fn color(self, theme: &Theme) -> iced::Color {
-        let scrim = &theme.scrim;
-        match self {
-            ScrimKind::Boot => scrim.boot,
-            ScrimKind::Shutdown => scrim.shutdown,
-            ScrimKind::LockAwake => scrim.lock_awake,
-            ScrimKind::Launcher => scrim.launcher,
-            ScrimKind::Overview => scrim.overview,
-            ScrimKind::Capture => scrim.capture,
-            ScrimKind::Modal => scrim.modal,
-            ScrimKind::TranslucentPanel => scrim.translucent_panel,
+/// A `canvas::Frame` band is one fill, so the one gradient scrim
+/// ([`ScrimKind::LockRest`]) resolves to its *strongest stop* — the nearest
+/// flat equivalent. Surfaces that want the real gradient paint it with
+/// [`crate::style::container::scrim`] and draw only the hole on canvas.
+fn flat_scrim_color(theme: &Theme, kind: ScrimKind) -> iced::Color {
+    let scrim = &theme.scrim;
+    match kind {
+        ScrimKind::Boot => scrim.boot,
+        ScrimKind::Shutdown => scrim.shutdown,
+        ScrimKind::LockAwake => scrim.lock_awake,
+        ScrimKind::LockRest => {
+            let strongest = scrim
+                .lock_rest
+                .stops
+                .iter()
+                .max_by(|a, b| a.color.a.cmp(&b.color.a))
+                .expect("a ScrimGradient always has three stops");
+            strongest.color
         }
-        .into_iced()
+        ScrimKind::Launcher => scrim.launcher,
+        ScrimKind::Overview => scrim.overview,
+        ScrimKind::Capture => scrim.capture,
+        ScrimKind::Modal => scrim.modal,
+        ScrimKind::TranslucentPanel => scrim.translucent_panel,
+        ScrimKind::Canvas => scrim.canvas,
     }
+    .into_iced()
 }
 
 /// The pre-extracted token values a rectangular-selection canvas draws with.
@@ -101,9 +86,12 @@ pub struct SelectionChrome {
     pub radius: f32,
     /// Stroke width of the dashed edge (`sizes.window_border`).
     pub edge_width: f32,
-    /// Dash pattern of the edge ([`SELECTION_DASH_SEGMENTS`]).
+    /// Dash pattern of the edge (`sizes.selection_dash_fill` px of accent,
+    /// `sizes.selection_dash_gap` px of gap).
     pub dash_segments: [f32; 2],
-    /// Drawn radius of the eight handles ([`HANDLE_RADIUS`]).
+    /// Drawn radius of the eight handles (`sizes.handle_radius`). Hit radii
+    /// are deliberately *not* here — how far a press can miss a handle is
+    /// input policy, which belongs to the consumer, not the design system.
     pub handle_radius: f32,
 }
 
@@ -112,12 +100,15 @@ impl SelectionChrome {
     /// surround with the given scrim.
     pub fn new(theme: &Theme, scrim: ScrimKind) -> Self {
         SelectionChrome {
-            scrim: scrim.color(theme),
+            scrim: flat_scrim_color(theme, scrim),
             accent: theme.palette.accent.into_iced(),
             radius: theme.radii.selection,
             edge_width: theme.sizes.window_border,
-            dash_segments: SELECTION_DASH_SEGMENTS,
-            handle_radius: HANDLE_RADIUS,
+            dash_segments: [
+                theme.sizes.selection_dash_fill,
+                theme.sizes.selection_dash_gap,
+            ],
+            handle_radius: theme.sizes.handle_radius,
         }
     }
 
