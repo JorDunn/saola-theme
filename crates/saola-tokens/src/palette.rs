@@ -226,18 +226,105 @@ impl Default for OnSurface {
     }
 }
 
+/// One stop of a [`ScrimGradient`]: a color and its position along the
+/// gradient axis (`0.0` = start, `1.0` = end).
+///
+/// Wire format: the color serializes as hex `#RRGGBBAA` like every other
+/// [`Color`], and `position` as a plain float.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GradientStop {
+    pub color: Color,
+    pub position: f32,
+}
+
+/// `#[serde(default)]` on [`ScrimGradient`]'s `stops` array needs a
+/// per-stop fallback for partial TOML tables missing individual fields.
+/// This is `lock_rest`'s *first* stop — arbitrary-but-real, like
+/// [`Shadow`](crate::Shadow)'s default; `Theme::saola()` never consults it.
+impl Default for GradientStop {
+    fn default() -> Self {
+        GradientStop {
+            color: Color::rgba(0x0C, 0x0A, 0x00, 46), // 0.18
+            position: 0.0,
+        }
+    }
+}
+
+/// A linear-gradient scrim: an axis angle (CSS convention — degrees
+/// clockwise from pointing up, so `180.0` runs top → bottom) and three
+/// color stops.
+///
+/// Three stops is what the Saola design language uses today (the
+/// lock/greeter at-rest scrim: heavier at both screen edges, nearly clear
+/// above center where the clock sits). The fixed-size array keeps the type
+/// `Copy`; it can grow to more stops later if a scrim ever needs them.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ScrimGradient {
+    pub angle_deg: f32,
+    pub stops: [GradientStop; 3],
+}
+
+/// Hand-written to the real `lock_rest` values (the style guide's
+/// `linear-gradient(180deg, rgba(12,10,0,.18), rgba(12,10,0,.02) 34%,
+/// rgba(12,10,0,.34))`), so a partial TOML table falls back to a real
+/// Saola gradient, never a zeroed one.
+impl Default for ScrimGradient {
+    fn default() -> Self {
+        ScrimGradient::lock_rest_from(Color::rgb(0x0C, 0x0A, 0x00))
+    }
+}
+
+impl ScrimGradient {
+    /// The lock/greeter at-rest gradient, re-derived from a custom ink
+    /// (same alpha bytes and stop positions as the built-in default).
+    fn lock_rest_from(ink: Color) -> Self {
+        let step = |a: u8| Color::rgba(ink.r, ink.g, ink.b, a);
+        ScrimGradient {
+            angle_deg: 180.0,
+            stops: [
+                GradientStop {
+                    color: step(46), // 0.18
+                    position: 0.0,
+                },
+                GradientStop {
+                    color: step(5), // 0.02
+                    position: 0.34,
+                },
+                GradientStop {
+                    color: step(87), // 0.34
+                    position: 1.0,
+                },
+            ],
+        }
+    }
+}
+
 /// Wallpaper scrims: how much of the wallpaper shows through in each shell
 /// state. The image itself never changes — only the ink overlay's opacity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Most entries are a flat [`Color`]; `lock_rest` is the one
+/// [`ScrimGradient`] the design language specifies.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Scrim {
     pub boot: Color,
     pub shutdown: Color,
+    /// The lock/greeter *at rest* (before wake): a vertical gradient that
+    /// leaves the band above center — where the clock sits — nearly clear,
+    /// and weights both screen edges. Waking replaces it with the flat
+    /// `lock_awake`.
+    pub lock_rest: ScrimGradient,
     pub lock_awake: Color,
     pub launcher: Color,
     pub overview: Color,
     pub capture: Color,
     pub modal: Color,
+    /// Content-region dimming inside an editor (e.g. the capture editor
+    /// dims everything outside the selection with this) — ink at 0.55,
+    /// never pure black.
+    pub canvas: Color,
     pub translucent_panel: Color,
 }
 
@@ -245,20 +332,22 @@ impl Scrim {
     /// Re-derive every scrim entry from a custom ink color — the scrim
     /// counterpart of [`OnSurface::on_ink_from`]/[`OnSurface::on_paper_from`],
     /// for consumers that override `palette.ink`. Only `ink`'s RGB channels
-    /// are used; each entry gets its own alpha byte (the same bytes as the
-    /// built-in default).
+    /// are used; each entry (including `lock_rest`'s gradient stops) gets
+    /// its own alpha byte (the same bytes as the built-in default).
     pub fn from_ink(ink: Color) -> Self {
         // Alpha channels are `round(cssAlpha * 255)` from the JSON's
         // `color.scrim` object; all scrims are ink-tinted.
         let step = |a: u8| Color::rgba(ink.r, ink.g, ink.b, a);
         Scrim {
-            boot: step(199),              // 0.78
-            shutdown: step(224),          // 0.88
+            boot: step(199),     // 0.78
+            shutdown: step(224), // 0.88
+            lock_rest: ScrimGradient::lock_rest_from(ink),
             lock_awake: step(158),        // 0.62
             launcher: step(133),          // 0.52
             overview: step(140),          // 0.55
             capture: step(158),           // 0.62
             modal: step(158),             // 0.62
+            canvas: step(140),            // 0.55
             translucent_panel: step(153), // 0.60
         }
     }

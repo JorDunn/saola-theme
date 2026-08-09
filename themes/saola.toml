@@ -44,7 +44,23 @@ launcher = "#0c0a0085"
 overview = "#0c0a008c"
 capture = "#0c0a009e"
 modal = "#0c0a009e"
+canvas = "#0c0a008c"
 translucent_panel = "#0c0a0099"
+
+[scrim.lock_rest]
+angle_deg = 180.0
+
+[[scrim.lock_rest.stops]]
+color = "#0c0a002e"
+position = 0.0
+
+[[scrim.lock_rest.stops]]
+color = "#0c0a0005"
+position = 0.34
+
+[[scrim.lock_rest.stops]]
+color = "#0c0a0057"
+position = 1.0
 
 [typography]
 family_ui = "IBM Plex Sans"

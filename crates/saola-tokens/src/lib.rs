@@ -40,7 +40,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 pub use color::{Color, ColorParseError};
-pub use palette::{OnSurface, Palette, Scrim, Surface};
+pub use palette::{GradientStop, OnSurface, Palette, Scrim, ScrimGradient, Surface};
 pub use tokens::{
     AnsiColors, FontSizes, FontWeights, Motion, Radii, Shadow, Shadows, Sizes, Terminal, Typography,
 };
@@ -255,6 +255,51 @@ mod tests {
     #[test]
     fn with_palette_of_the_default_palette_is_saola() {
         assert_eq!(Theme::with_palette(Palette::default()), Theme::saola());
+    }
+
+    #[test]
+    fn scrim_gradient_round_trips_through_toml() {
+        let theme = Theme::saola();
+        let parsed = Theme::from_toml_str(&theme.to_toml_string().unwrap()).unwrap();
+        assert_eq!(parsed.scrim.lock_rest, theme.scrim.lock_rest);
+        assert_eq!(parsed.scrim.canvas, theme.scrim.canvas);
+    }
+
+    #[test]
+    fn scrim_gradient_matches_the_style_guide_values() {
+        // linear-gradient(180deg, rgba(12,10,0,.18), rgba(12,10,0,.02) 34%,
+        // rgba(12,10,0,.34)) — and canvas is ink at 0.55.
+        let g = Theme::saola().scrim.lock_rest;
+        assert_eq!(g.angle_deg, 180.0);
+        let expected = [(46u8, 0.0f32), (5, 0.34), (87, 1.0)];
+        for (stop, (alpha, position)) in g.stops.iter().zip(expected) {
+            assert_eq!(
+                (stop.color.r, stop.color.g, stop.color.b),
+                (0x0C, 0x0A, 0x00)
+            );
+            assert_eq!(stop.color.a, alpha);
+            assert_eq!(stop.position, position);
+        }
+        assert_eq!(
+            Theme::saola().scrim.canvas,
+            Color::rgba(0x0C, 0x0A, 0x00, 140)
+        );
+    }
+
+    #[test]
+    fn partial_scrim_table_without_gradient_fields_still_parses() {
+        // A theme file written before `lock_rest`/`canvas` existed — one
+        // that overrides only a flat scrim — must still parse, with the
+        // new fields at their built-in defaults.
+        let parsed = Theme::from_toml_str(
+            r##"
+            [scrim]
+            lock_awake = "#0C0A009E"
+            "##,
+        )
+        .unwrap();
+        assert_eq!(parsed.scrim.lock_rest, Theme::saola().scrim.lock_rest);
+        assert_eq!(parsed.scrim.canvas, Theme::saola().scrim.canvas);
     }
 
     #[test]
