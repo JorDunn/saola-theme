@@ -41,6 +41,7 @@
 pub mod text;
 
 use iced::widget::text as text_widget;
+use iced::widget::text::IntoFragment;
 use iced::widget::{
     button, container, progress_bar, rule, Column, Container, ProgressBar, Row, Rule, Space,
 };
@@ -468,6 +469,14 @@ pub fn menu_row<'a, M: Clone + 'a>(
 /// already standing in should do nothing. Every other crumb is clickable
 /// and quiet until hovered.
 ///
+/// Labels are `impl IntoFragment<'a>` — `&str`, `String`, or `Cow<'a, str>`
+/// — so per-frame owned path segments work (the trail a file manager builds
+/// from a `PathBuf` each `view` call). `IntoFragment` consumes its value,
+/// which is why crumbs come in by value (`impl IntoIterator`, typically an
+/// array literal) rather than the slice the rest of this module favors. One
+/// label type per call: `L` is monomorphic, so a trail mixing `&str` and
+/// `String` converts everything to one of them first.
+///
 /// ```no_run
 /// use saola_theme::{widget, Surface, Theme};
 ///
@@ -475,30 +484,40 @@ pub fn menu_row<'a, M: Clone + 'a>(
 /// let _trail: iced::Element<'_, ()> = widget::breadcrumb(
 ///     &t,
 ///     Surface::Paper,
-///     &[("Home", Some(())), ("Projects", Some(())), ("saola-theme", None)],
+///     [("Home", Some(())), ("Projects", Some(())), ("saola-theme", None)],
+/// );
+/// let name = String::from("saola-theme");
+/// let _owned: iced::Element<'_, ()> = widget::breadcrumb(
+///     &t,
+///     Surface::Paper,
+///     [(String::from("Home"), Some(())), (name, None)],
 /// );
 /// ```
-pub fn breadcrumb<'a, M: Clone + 'a>(
+pub fn breadcrumb<'a, L, M>(
     t: &Theme,
     s: Surface,
-    crumbs: &[(&'a str, Option<M>)],
-) -> Element<'a, M> {
+    crumbs: impl IntoIterator<Item = (L, Option<M>)>,
+) -> Element<'a, M>
+where
+    L: IntoFragment<'a>,
+    M: Clone + 'a,
+{
     let separator_tint = t.on(s).quaternary.into_iced();
-    let last = crumbs.len().saturating_sub(1);
+    let mut crumbs = crumbs.into_iter().peekable();
     let mut trail = Row::new().spacing(t.sizes.pill_gap).align_y(Center);
-    for (i, (label, on_press)) in crumbs.iter().enumerate() {
+    while let Some((label, on_press)) = crumbs.next() {
         let is_current = on_press.is_none();
         trail = trail.push(
             button(
-                text_widget(*label)
+                text_widget(label)
                     .font(ui_font(t))
                     .size(t.typography.size.secondary),
             )
             .padding(t.paddings.breadcrumb)
             .style(style::button::breadcrumb(t, s, is_current))
-            .on_press_maybe(on_press.clone()),
+            .on_press_maybe(on_press),
         );
-        if i != last {
+        if crumbs.peek().is_some() {
             trail = trail.push(icon(Icon::ChevronRight, t.sizes.icon_bar, separator_tint));
         }
     }
@@ -904,10 +923,18 @@ mod tests {
         let _: Element<'_, ()> = breadcrumb(
             &t,
             s,
-            &[
+            [
                 ("Home", Some(())),
                 ("Projects", Some(())),
                 ("saola-theme", None),
+            ],
+        );
+        let _: Element<'_, ()> = breadcrumb(
+            &t,
+            s,
+            [
+                (String::from("Home"), Some(())),
+                (String::from("src"), None),
             ],
         );
         let _: Element<'_, ()> = bare_icon_item(&t, Icon::Lock, "Lock", false, Some(()));

@@ -1412,16 +1412,18 @@ impl Gallery {
         let short = widget::breadcrumb(
             t,
             s,
-            &[("Home", Some(Message::DemoPressed)), ("Documents", None)],
+            [("Home", Some(Message::DemoPressed)), ("Documents", None)],
         );
+        // Owned labels — the reason crumbs are by-value: a real consumer
+        // builds these from a `PathBuf` each frame.
         let long = widget::breadcrumb(
             t,
             s,
-            &[
-                ("Home", Some(Message::DemoPressed)),
-                ("Projects", Some(Message::DemoPressed)),
-                ("saola-theme", Some(Message::DemoPressed)),
-                ("src", None),
+            [
+                ("Home".to_string(), Some(Message::DemoPressed)),
+                ("Projects".to_string(), Some(Message::DemoPressed)),
+                ("saola-theme".to_string(), Some(Message::DemoPressed)),
+                ("src".to_string(), None),
             ],
         );
         column![short, long].spacing(12).into()
