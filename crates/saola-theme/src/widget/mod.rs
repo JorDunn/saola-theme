@@ -673,6 +673,80 @@ where
         .into()
 }
 
+/// The content color [`style::segmented::segment`] gives a segment's label
+/// at rest/hover/press — computed up front because an `Svg`'s tint is baked
+/// at build time (workaround #3 in the module docs). The three values are
+/// copied verbatim from that style's `selected_label`/`rest_label` locals;
+/// parity is asserted in [`tests::segment_tint_matches_the_segment_styles_label_color`].
+fn segment_tint(t: &Theme, s: Surface, is_selected: bool) -> iced::Color {
+    if is_selected {
+        t.palette.paper.into_iced()
+    } else {
+        match s {
+            Surface::Ink => t.palette.ink.into_iced(),
+            Surface::Paper => t.on_paper.primary.into_iced(),
+        }
+    }
+}
+
+/// [`segmented_row`]'s icon-only sibling: the same track-and-segments
+/// assembly (same [`segment_height`], `sizes.track_inset` padding,
+/// `sizes.island_gap` per-segment padding, [`style::segmented`] styles)
+/// with a `sizes.icon_row` glyph per segment instead of a label — the
+/// list/grid view-switcher shape ([`Icon::List`] | [`Icon::LayoutGrid`]).
+///
+/// Unlike [`icon_button`], the tint is *not* the caller's job: a segment's
+/// content color is fully determined by `is_selected` and the surface,
+/// both of which this constructor already knows, so [`segment_tint`]
+/// computes it internally. Baking the tint is safe here — workaround #3
+/// (an `Svg` can't follow the button's live `Status`) costs nothing,
+/// because [`style::segmented::segment`] keeps its label color constant
+/// across `Active`/`Hovered`/`Pressed` (only `Disabled` differs, and no
+/// segment is ever disabled: every one gets an `on_press`). A hover that
+/// *did* recolor the label would drift from the glyph; the parity test
+/// pins the recipe so that can't happen silently.
+pub fn segmented_row_icons<'a, T, M>(
+    t: &Theme,
+    s: Surface,
+    options: &[(T, Icon)],
+    selected: &T,
+    on_select: impl Fn(T) -> M,
+) -> Element<'a, M>
+where
+    T: Clone + PartialEq,
+    M: Clone + 'a,
+{
+    let track_inset = t.sizes.track_inset;
+    let segment_gap = t.sizes.segment_inset;
+    let height = segment_height(t);
+
+    let mut segments = Row::new().spacing(segment_gap);
+    for (value, kind) in options {
+        let is_selected = value == selected;
+        // The same centering sandwich as `segmented_row`, glyph for label.
+        let content = container(icon(
+            *kind,
+            t.sizes.icon_row,
+            segment_tint(t, s, is_selected),
+        ))
+        .align_x(Center)
+        .align_y(Center)
+        .height(Fill);
+        segments = segments.push(
+            button(content)
+                .height(height)
+                .padding([0.0, t.sizes.island_gap])
+                .style(style::segmented::segment(t, s, is_selected))
+                .on_press(on_select(value.clone())),
+        );
+    }
+
+    container(segments)
+        .padding(track_inset)
+        .style(style::segmented::track(t, s))
+        .into()
+}
+
 // ---------------------------------------------------------------------------
 // Notification centre
 // ---------------------------------------------------------------------------
@@ -920,6 +994,13 @@ mod tests {
         );
         let _: Element<'_, ()> =
             segmented_row(&t, s, &[(0u8, "Files"), (1, "Folders")], &0u8, |_| ());
+        let _: Element<'_, ()> = segmented_row_icons(
+            &t,
+            s,
+            &[(0u8, Icon::List), (1, Icon::LayoutGrid)],
+            &0u8,
+            |_| (),
+        );
         let _: Element<'_, ()> = breadcrumb(
             &t,
             s,
@@ -958,5 +1039,26 @@ mod tests {
         let crumbs: &[(&str, Option<()>)] = &[("Home", Some(())), ("saola-theme", None)];
         let is_current: Vec<bool> = crumbs.iter().map(|(_, m)| m.is_none()).collect();
         assert_eq!(is_current, vec![false, true]);
+    }
+
+    /// [`segment_tint`] is a verbatim copy of the label colors inside
+    /// [`style::segmented::segment`] (a baked `Svg` tint can't read them
+    /// through the style closure) — this pins the copy to the original so
+    /// the two can't drift apart silently.
+    #[test]
+    fn segment_tint_matches_the_segment_styles_label_color() {
+        let t = Theme::saola();
+        for s in [Surface::Ink, Surface::Paper] {
+            for is_selected in [false, true] {
+                // The closure ignores its `&iced::Theme` argument (every
+                // color was captured from the Saola theme), so any variant
+                // works here.
+                let style = style::segmented::segment(&t, s, is_selected)(
+                    &iced::Theme::Light,
+                    iced::widget::button::Status::Active,
+                );
+                assert_eq!(segment_tint(&t, s, is_selected), style.text_color);
+            }
+        }
     }
 }

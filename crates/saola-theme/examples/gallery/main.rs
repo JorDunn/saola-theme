@@ -77,6 +77,8 @@ enum Message {
     RadioSelected(bool),
     /// Index into the segmented control's labels (Files/Folders/All).
     SegmentSelected(usize),
+    /// Index into the icon view-switcher's glyphs: 0 = list, 1 = grid.
+    ViewSelected(usize),
     /// Flips `Gallery::surface` between `Surface::Ink` and `Surface::Paper`.
     /// No payload: there are only two surfaces, so "toggle" always means
     /// "the other one" — nothing the message needs to carry.
@@ -102,6 +104,8 @@ struct Gallery {
     kit_text_input_value: String,
     radio_selected: bool,
     segment_selected: usize,
+    /// The icon view-switcher's selection (list vs grid).
+    view_selected: usize,
     /// The Stage 16 combo box's search/filter state — owned here (not
     /// rebuilt per `view()`) because `combo_box::State` carries a `RefCell`
     /// the widget mutates as the user types, the same reason every other
@@ -134,6 +138,7 @@ impl Gallery {
             kit_text_input_value: String::new(),
             radio_selected: true,
             segment_selected: 0,
+            view_selected: 0,
             combo_box_state: combo_box::State::new(PICK_LIST_OPTIONS.to_vec()),
             combo_box_selected: None,
             editor_content: text_editor::Content::with_text(
@@ -157,6 +162,7 @@ impl Gallery {
             Message::KitTextInputChanged(value) => self.kit_text_input_value = value,
             Message::RadioSelected(selected) => self.radio_selected = selected,
             Message::SegmentSelected(index) => self.segment_selected = index,
+            Message::ViewSelected(index) => self.view_selected = index,
             Message::SurfaceToggled => {
                 self.surface = match self.surface {
                     Surface::Ink => Surface::Paper,
@@ -1487,6 +1493,18 @@ impl Gallery {
             Message::SegmentSelected,
         );
 
+        // Its icon-only sibling, the list/grid view switcher —
+        // `segmented_row_icons` computes each glyph's tint internally from
+        // `is_selected` + surface (unlike `icon_button`, where tint is the
+        // caller's job).
+        let view_switcher = widget::segmented_row_icons(
+            t,
+            s,
+            &[(0usize, Icon::List), (1, Icon::LayoutGrid)],
+            &self.view_selected,
+            Message::ViewSelected,
+        );
+
         // `empty_state` centers in all the space it's given, so the specimen
         // hands it a bounded band.
         let empty = container(widget::empty_state(t, s, "This folder is empty"))
@@ -1509,7 +1527,7 @@ impl Gallery {
 
         column![
             buttons,
-            segmented,
+            row![segmented, view_switcher].spacing(12),
             widget::section_label(t, s, "PLACES"),
             widget::quiet_row(t, s, "Media — no player"),
             widget::separator(t, s),
