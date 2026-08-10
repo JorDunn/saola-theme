@@ -158,6 +158,9 @@ handle_radius = 5.0
 readout_width = 136.0
 selection_dash_fill = 6.0
 selection_dash_gap = 4.0
+scrim_blur_launcher = 4.0
+scrim_blur_overview = 6.0
+scrim_blur_modal = 7.0
 
 [paddings]
 pill_button = [

@@ -14,6 +14,19 @@ use saola_tokens::{Surface, Theme};
 
 use crate::convert::ColorExt;
 
+/// Styles [`slider`](iced::widget::slider) *and*
+/// [`vertical_slider`](iced::widget::vertical_slider) — `iced_widget`'s
+/// `vertical_slider` module re-exports the horizontal module's `Catalog`,
+/// `Status`, and `Style` verbatim (`pub use crate::slider::{Catalog,
+/// Handle, HandleShape, Status, Style, StyleFn, default};` in
+/// `vertical_slider.rs`), so this one closure already satisfies both
+/// widgets' `.style(...)` — no vertical-specific code needed.
+///
+/// `sizes.track_inset` (the inset of the handle's travel inside the rail)
+/// has no hook here: iced computes a slider's travel range itself from the
+/// rail length and handle size, and `slider::Style` exposes no inset field
+/// to override it. The token's intended reading for this widget is
+/// therefore documentary, not wired code.
 pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     let track = t.on(s).track.into_iced();
     let accent = t.palette.accent;

@@ -53,6 +53,36 @@ pub fn toast_alpha(t: &Theme, elapsed: Duration) -> f32 {
     }
 }
 
+/// A toast's life-rule fraction at `elapsed`: the style guide §6 lifetime
+/// countdown, shaped from the same phase boundaries as [`toast_alpha`] but
+/// inverted for "remaining life" instead of "opacity" — `1.0` (full) while
+/// the toast is still arriving (`motion.toast_in`; nothing to count down
+/// yet), draining linearly to `0.0` across `motion.toast_idle` (the
+/// countdown proper — the fraction of visible time left), then staying at
+/// `0.0` through `motion.toast_out` (the toast is already expired and
+/// fading away, so the rule has nothing left to show — consistent with
+/// [`crate::style::container::card_urgent`]'s "a terracotta ring and no
+/// life rule": a card that never counts down never needs this function
+/// either).
+///
+/// Pair the result with [`crate::style::notification::life_rule`] as an
+/// iced `progress_bar`'s `value` (range `0.0..=1.0`): the bar drains from
+/// full to empty as the toast ages, the same clamped-progress idiom
+/// [`toast_alpha`] uses for opacity.
+pub fn life_fraction(t: &Theme, elapsed: Duration) -> f32 {
+    let in_dur = Duration::from_millis(t.motion.toast_in.into());
+    let idle_dur = Duration::from_millis(t.motion.toast_idle.into());
+
+    if elapsed < in_dur {
+        1.0
+    } else if elapsed < in_dur + idle_dur {
+        let idle_elapsed = elapsed.saturating_sub(in_dur);
+        1.0 - fraction(idle_elapsed, t.motion.toast_idle)
+    } else {
+        0.0
+    }
+}
+
 /// A breathing dot's opacity at `elapsed`: a cosine sweep between
 /// `motion.breathe_min_opacity` and `1.0`, one full breath (dim → bright →
 /// dim) per `motion.breathe` ms, looping. Feed the result to
@@ -133,6 +163,31 @@ mod tests {
         assert_eq!(toast_alpha(&t, in_dur + idle_dur + out_dur), 0.0);
         assert_eq!(
             toast_alpha(&t, in_dur + idle_dur + out_dur + Duration::from_secs(1)),
+            0.0
+        );
+    }
+
+    #[test]
+    fn life_fraction_three_phases() {
+        let t = theme();
+        let in_dur = Duration::from_millis(t.motion.toast_in.into());
+        let idle_dur = Duration::from_millis(t.motion.toast_idle.into());
+        let out_dur = Duration::from_millis(t.motion.toast_out.into());
+
+        // Full through the whole entrance — nothing to count down yet.
+        assert_eq!(life_fraction(&t, Duration::ZERO), 1.0);
+        assert_eq!(life_fraction(&t, in_dur), 1.0);
+
+        // Draining linearly across idle: 1 at the start, 0 at the end,
+        // falling in between.
+        assert_eq!(life_fraction(&t, in_dur + idle_dur), 0.0);
+        let mid_idle = life_fraction(&t, in_dur + idle_dur / 2);
+        assert!(mid_idle > 0.0 && mid_idle < 1.0);
+
+        // Empty through the fade-out and beyond — already expired.
+        assert_eq!(life_fraction(&t, in_dur + idle_dur + out_dur / 2), 0.0);
+        assert_eq!(
+            life_fraction(&t, in_dur + idle_dur + out_dur + Duration::from_secs(1)),
             0.0
         );
     }

@@ -12,8 +12,9 @@ thiserror = "2"
 # "svg" and "canvas" are lib features (not left to consumers like the
 # renderer choice): the shared icon module embeds and draws SVG assets
 # (`iced::widget::svg` only exists with "svg" on), and `saola_theme::canvas`
-# (the selection-chrome token bridge) is frame drawing that needs the
-# "canvas" widget API. "advanced" exposes `iced::advanced` for
+# (the selection-chrome token bridge) and `saola_theme::indeterminate` (the
+# §7 indeterminate progress rule's `canvas::Program`) are frame drawing that
+# needs the "canvas" widget API. "advanced" exposes `iced::advanced` for
 # `saola_theme::marquee`'s custom `Widget` impl (the §5 sweep needs the
 # renderer's own paragraph measurement — `Plain<Paragraph>` — which iced
 # gates behind it). "image-without-codecs" exists for `saola_theme::avatar`:

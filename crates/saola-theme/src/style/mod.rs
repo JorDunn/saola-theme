@@ -21,7 +21,10 @@
 //! existed).
 
 pub mod button;
+pub mod combo_box;
 pub mod container;
+pub mod dialog;
+pub mod notification;
 pub mod pick_list;
 pub mod progress;
 pub mod radio;
@@ -29,6 +32,8 @@ pub mod rule;
 pub mod scrollable;
 pub mod segmented;
 pub mod slider;
+pub mod table;
+pub mod text_editor;
 pub mod text_input;
 pub mod toggles;
 
@@ -96,5 +101,15 @@ mod tests {
 
         let field = super::text_input::rest(&t, Surface::Ink);
         let _reused = field.clone();
+
+        let combo_field = super::combo_box::field(&t, Surface::Paper);
+        let _reused = combo_field.clone();
+        let combo_menu = super::combo_box::menu(&t, Surface::Paper);
+        let _reused = combo_menu.clone();
+
+        let editor = super::text_editor::rest(&t, Surface::Ink);
+        let _reused = editor.clone();
+        let table = super::table::rest(&t, Surface::Paper);
+        let _reused = table.clone();
     }
 }

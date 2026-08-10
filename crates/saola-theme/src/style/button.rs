@@ -1,5 +1,5 @@
 //! Button styles: `rest`, `active`, `emphasis`, `muted`, `bare`,
-//! `list_row`, `selection_tile`, `menu_row`.
+//! `list_row`, `selection_tile`, `menu_row`, `breadcrumb`, `bare_icon`.
 //!
 //! The one rule, applied to buttons:
 //!
@@ -18,6 +18,15 @@
 //!   grid-view tiles.
 //! - [`menu_row`] — a menu option: quiet at rest, terracotta the moment it
 //!   is hovered ("hover is the selection preview").
+//! - [`breadcrumb`] — a file-picker path segment (style guide §7): quiet
+//!   (`secondary` label, `fill_subtle` hover) for a segment you can still
+//!   navigate to; the current segment ignores `Status` entirely and always
+//!   draws [`active`]'s terracotta "on" look.
+//! - [`bare_icon`] — a click target with **no background at any state**
+//!   (style guide §6's power/boot menu: "icons directly on the surface").
+//!   All of the state change rides the glyph's own tint, which a button
+//!   style closure can't reach — see
+//!   [`crate::widget::bare_icon_item`].
 //!
 //! There is deliberately no `danger` variant: Saola has three colors, never
 //! a fourth. Destructive confirmation is a consumer *pattern* (wording,
@@ -359,4 +368,74 @@ pub fn emphasis(
         };
         pill(Some(background.into_iced()), label.into_iced(), radius)
     }
+}
+
+/// A file-picker breadcrumb segment (style guide §7): quiet at rest — no
+/// fill, `secondary`-role label — surfacing `fill_subtle`/`fill` on
+/// hover/press exactly like [`bare`], but with a quieter resting label than
+/// `bare`'s `primary` (a breadcrumb segment reads as a secondary wayfinding
+/// element, not primary content). Pair with `paddings.breadcrumb` and a
+/// [`crate::style::border_none`]-radius `radii.pill` — the geometry a button
+/// style closure can't set — via [`crate::widget::breadcrumb`].
+///
+/// `is_current` is the crumb for the folder you're already in: it has no
+/// `.on_press` (mirroring [`menu_row`]'s "enabled derived from
+/// `on_press.is_some()`" convention, applied by
+/// [`crate::widget::breadcrumb`]), so iced would otherwise report
+/// `Status::Disabled` unconditionally and draw the grayed-out disabled
+/// look — wrong for a segment that should read as emphasized, not dead.
+/// `is_current` short-circuits `Status` entirely instead, always drawing
+/// [`active`]'s terracotta pill with an ivory label (the exact "on"
+/// treatment the design language's one rule gives every current/selected
+/// state).
+///
+/// A non-current crumb is content sitting in a path, not a control with a
+/// meaningfully different "off" state — [`list_row`]'s reasoning applies
+/// here too, so its `Active` and `Disabled` arms both draw the same quiet
+/// rest look (a crumb built with no `.on_press` at all, rather than via
+/// `is_current`, still reads correctly).
+pub fn breadcrumb(
+    t: &Theme,
+    s: Surface,
+    is_current: bool,
+) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+    let radius = t.radii.pill;
+    let on = *t.on(s);
+    let accent = t.palette.accent;
+    let ivory = t.palette.paper;
+    move |_, status| {
+        if is_current {
+            return pill(Some(accent.into_iced()), ivory.into_iced(), radius);
+        }
+        match status {
+            Status::Hovered => pill(
+                Some(on.fill_subtle.into_iced()),
+                on.secondary.into_iced(),
+                radius,
+            ),
+            Status::Pressed => pill(Some(on.fill.into_iced()), on.secondary.into_iced(), radius),
+            Status::Active | Status::Disabled => pill(None, on.secondary.into_iced(), radius),
+        }
+    }
+}
+
+/// A click target with **no background at any state** — the power/boot
+/// menu's icon items (style guide §6: "icons directly on the surface...
+/// ivory 55% at rest, full terracotta hovered"). Every other button style in
+/// this module paints *some* fill on hover/press ([`bare`]'s
+/// `fill_subtle`/`fill`, [`rest`]'s solid pill); this one paints nothing,
+/// ever — the icon glyph itself carries the whole state change, via a
+/// caller-supplied tint. That tint can't ride this style closure (an
+/// `Svg`'s color is fixed at build time — the same iced 0.14 constraint
+/// [`crate::widget::icon_button`] documents), so
+/// [`crate::widget::bare_icon_item`] computes it from
+/// [`crate::widget::role`]/[`crate::widget::Emphasis`] instead.
+///
+/// Ink-only, no `Surface` parameter: the power/boot menus this styles live
+/// on the shell scrim layer (style guide §6), never on a paper window —
+/// the same "always one look" shape as [`crate::style::notification`] and
+/// `container::popover`/`badge`/`tooltip`/`dialog::surface`.
+pub fn bare_icon(t: &Theme) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+    let label = t.on_ink.primary.into_iced();
+    move |_, _status| pill(None, label, 0.0)
 }

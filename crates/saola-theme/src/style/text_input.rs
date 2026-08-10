@@ -224,6 +224,11 @@ fn prompt_fill(t: &Theme, s: Surface) -> Fill {
 /// `reveal::field_style`, which documented itself as exactly this
 /// substitution.
 ///
+/// The style closure has no height to set (that's the consumer's `.height`
+/// call on the `text_input` widget itself) — the intended field height for
+/// this look is `sizes.field_lock` (62 px, the spec's 60–64 range;
+/// saola-lockscreen's shipped field is 68 px and should adopt this token).
+///
 /// **The no-jump disabled rule**: `Status::Disabled` keeps the resting
 /// fill — only the text drops to the disabled step. The lock screen
 /// disables the field while PAM verifies a password, and the field visibly

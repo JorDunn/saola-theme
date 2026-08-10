@@ -218,8 +218,11 @@ pub struct Sizes {
     /// hardcoded in `style::focus_border`, `container::card_urgent`, the
     /// panel's tray, and the lockscreen before it was a token.
     pub ring: f32,
-    /// Segmented-control track inset and inter-segment gap (saola-capture
-    /// ×2, saola-files, and the gallery each carried it as a local 4.0).
+    /// Gap between segments in a segmented control (saola-capture ×2,
+    /// saola-files, and the gallery each carried it as a local 4.0). The
+    /// track's own padding is a separate token, [`Sizes::track_inset`] —
+    /// the two happen to share a value (4.0) today, but they are distinct
+    /// roles.
     pub segment_inset: f32,
     /// The sub-`pill_gap` gap for tightly-related elements (saola-files ×6,
     /// saola-capture ×2 all used a local 4.0).
@@ -247,8 +250,14 @@ pub struct Sizes {
     pub life_rule: f32,
     /// Lock/greeter avatar circle diameter (saola-lockscreen).
     pub avatar_lock: f32,
-    /// Lock/greeter password field height — the spec says 60–64;
-    /// saola-lockscreen shipped 68, which this corrects.
+    /// Lock/greeter password field height. `design/saola-tokens.json` has no
+    /// entry for this token — it was minted from consumer recon, not the
+    /// JSON — so the authoritative value is the style guide's stated range,
+    /// 60–64 px; `62.0` (the midpoint) is what's set below. saola-lockscreen
+    /// shipped a field 68 px tall, overshooting that range; it should adopt
+    /// this token rather than keep its own constant. See
+    /// `saola_theme::style::text_input::prompt`'s docs for the intended
+    /// pairing.
     pub field_lock: f32,
     /// Vertical gap between lock-screen stack elements (avatar, name,
     /// field) (saola-lockscreen).
@@ -258,7 +267,17 @@ pub struct Sizes {
     pub popover_separator_gap: f32,
     /// Inset of a slider/scrollbar handle's travel inside its track
     /// (saola-panel used `pill_gap / 2`; quick-settings segmented track and
-    /// scrollbar rail gap).
+    /// scrollbar rail gap). Wired into `saola-theme`'s
+    /// `widget::segmented_row` as the track's own padding — the
+    /// "quick-settings segmented track" case, since a segmented control
+    /// built from that constructor is exactly what backs saola-panel's
+    /// quick settings. The slider-handle-travel and scrollbar-rail-gap
+    /// cases have no style-closure hook in iced 0.14 (a slider's handle
+    /// travel is computed by the widget itself; a scrollbar's rail margin
+    /// is a `Scrollbar::margin(...)` builder call, not part of
+    /// `scrollable::Style`) — those two intended uses are consumer-set and
+    /// documented on `style::slider::rest` / `style::scrollable::rest`
+    /// instead of forced into this crate.
     pub track_inset: f32,
     /// Radius of a drag handle dot (saola-capture selection chrome).
     pub handle_radius: f32,
@@ -268,6 +287,39 @@ pub struct Sizes {
     pub selection_dash_fill: f32,
     /// Marching-ants selection outline: gap between dashes (saola-capture).
     pub selection_dash_gap: f32,
+    /// Compositor blur radius behind the launcher scrim (style guide §2:
+    /// "Launcher open | `rgba(12,10,0,0.52)` + 4px blur"), in logical
+    /// pixels. Paired with `color.scrim.launcher` (`Scrim::launcher`).
+    ///
+    /// iced 0.14 cannot blur content behind a window — there is no
+    /// `backdrop-filter` equivalent in `container::Style` — so this is pure
+    /// data for a consumer's own compositor effect (e.g. a layer-shell blur
+    /// region), not something `saola-theme` renders itself. See
+    /// [`Sizes::scrim_blur_modal`] for the fullest statement of this note.
+    pub scrim_blur_launcher: f32,
+    /// Compositor blur radius behind the workspace-overview scrim (style
+    /// guide §2: "Overview | `rgba(12,10,0,0.55)` + 6px blur"). Same
+    /// out-of-scope-for-iced note as [`Sizes::scrim_blur_modal`].
+    pub scrim_blur_overview: f32,
+    /// Compositor blur radius behind a modal dialog's backdrop (style guide
+    /// §2: "Modal dialog backdrop | `rgba(12,10,0,0.62)` + 7px blur").
+    /// Paired with `color.scrim.modal` (`Scrim::modal`) —
+    /// `saola_theme::style::dialog` documents the full assembly recipe.
+    ///
+    /// **iced 0.14 cannot blur content behind a window**: there is no
+    /// `backdrop-filter`-equivalent field anywhere in `container::Style`, so
+    /// this crate can only carry the *number* the style guide specifies.
+    /// Rendering the blur itself is a consumer/compositor concern (e.g. a
+    /// Wayland layer-shell blur region, or a screenshot-based fake blur) —
+    /// `saola-theme`'s dialog and scrim helpers only ever paint the flat
+    /// `scrim.modal` color.
+    ///
+    /// The style guide gives the launcher and overview scrims their own
+    /// blur values too (4px, 6px) rather than one shared number, so those
+    /// get their own fields ([`Sizes::scrim_blur_launcher`],
+    /// [`Sizes::scrim_blur_overview`]) instead of a single generic
+    /// "backdrop blur" token.
+    pub scrim_blur_modal: f32,
 }
 
 impl Default for Sizes {
@@ -333,6 +385,9 @@ impl Default for Sizes {
             readout_width: 136.0,
             selection_dash_fill: 6.0,
             selection_dash_gap: 4.0,
+            scrim_blur_launcher: 4.0,
+            scrim_blur_overview: 6.0,
+            scrim_blur_modal: 7.0,
         }
     }
 }

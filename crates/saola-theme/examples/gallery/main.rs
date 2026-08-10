@@ -19,15 +19,17 @@ mod pages;
 use std::time::Duration;
 
 use iced::widget::{
-    button, canvas, checkbox, column, container, pick_list, progress_bar, radio, row, scrollable,
-    slider, text, text_input, toggler, Space,
+    button, canvas, checkbox, column, combo_box, container, pick_list, progress_bar, radio, row,
+    scrollable, slider, table, text, text_editor, text_input, toggler, tooltip, vertical_slider,
+    Space,
 };
 use iced::{Element, Fill, Point, Rectangle, Size, Task};
 use saola_theme::canvas::SelectionChrome;
+use saola_theme::indeterminate::indeterminate_rule;
 use saola_theme::marquee::marquee;
 use saola_theme::style::container::{DashState, ScrimKind, SessionStatus};
 use saola_theme::widget::Emphasis;
-use saola_theme::{avatar, convert, icon, style, widget, Icon, Surface, Theme};
+use saola_theme::{avatar, convert, icon, motion, style, widget, ColorExt, Icon, Surface, Theme};
 
 /// The options shown in the Widgets page's pick list demo.
 const PICK_LIST_OPTIONS: &[&str] = &["Ink", "Paper", "Terracotta"];
@@ -56,10 +58,18 @@ enum Message {
     /// Buttons need an `on_press` to be enabled; the demo ones do nothing.
     DemoPressed,
     TextInputChanged(String),
+    /// The Stage 17 text-editor specimen: every edit arrives as a
+    /// `text_editor::Action` the update loop replays onto the shared
+    /// `Content` (the widget owns no text of its own).
+    EditorAction(text_editor::Action),
     CheckboxToggled(bool),
     TogglerToggled(bool),
     SliderChanged(f32),
     PickListSelected(&'static str),
+    /// The Stage 16 combo box specimen — shares `PICK_LIST_OPTIONS` with
+    /// the pick list demo above it, since both are "closed-set chooser"
+    /// specimens and don't need distinct option lists to make their point.
+    ComboBoxSelected(&'static str),
     /// The Stage 8 kit's own text-input specimens share one value field
     /// (the demo is about the border/ring treatment, not distinct content).
     KitTextInputChanged(String),
@@ -71,6 +81,8 @@ enum Message {
     /// No payload: there are only two surfaces, so "toggle" always means
     /// "the other one" — nothing the message needs to carry.
     SurfaceToggled,
+    /// The notification-centre mock's Do Not Disturb row.
+    DndToggled(bool),
 }
 
 struct Gallery {
@@ -90,6 +102,22 @@ struct Gallery {
     kit_text_input_value: String,
     radio_selected: bool,
     segment_selected: usize,
+    /// The Stage 16 combo box's search/filter state — owned here (not
+    /// rebuilt per `view()`) because `combo_box::State` carries a `RefCell`
+    /// the widget mutates as the user types, the same reason every other
+    /// stateful specimen above (`text_input_value`, `pick_list_selected`…)
+    /// lives on `Gallery` rather than being constructed fresh each frame.
+    combo_box_state: combo_box::State<&'static str>,
+    combo_box_selected: Option<&'static str>,
+    /// The Stage 17 text editor's buffer — owned here for the same reason
+    /// as `combo_box_state` above: `text_editor::Content` is the widget's
+    /// stateful backing store (text, cursor, undo), so rebuilding it per
+    /// `view()` would discard the user's edits every frame. Both surface
+    /// specimens borrow this one buffer, exactly as the two text-input
+    /// specimens share `text_input_value`.
+    editor_content: text_editor::Content,
+    /// The notification-centre mock's Do Not Disturb toggle.
+    dnd_toggled: bool,
 }
 
 impl Gallery {
@@ -106,6 +134,12 @@ impl Gallery {
             kit_text_input_value: String::new(),
             radio_selected: true,
             segment_selected: 0,
+            combo_box_state: combo_box::State::new(PICK_LIST_OPTIONS.to_vec()),
+            combo_box_selected: None,
+            editor_content: text_editor::Content::with_text(
+                "Multi-line notes live here.\nSecond line to prove the wrap.",
+            ),
+            dnd_toggled: false,
         }
     }
 
@@ -114,10 +148,12 @@ impl Gallery {
             Message::PageSelected(page) => self.page = page,
             Message::DemoPressed => {}
             Message::TextInputChanged(value) => self.text_input_value = value,
+            Message::EditorAction(action) => self.editor_content.perform(action),
             Message::CheckboxToggled(checked) => self.checkbox_checked = checked,
             Message::TogglerToggled(toggled) => self.toggler_toggled = toggled,
             Message::SliderChanged(value) => self.slider_value = value,
             Message::PickListSelected(selected) => self.pick_list_selected = Some(selected),
+            Message::ComboBoxSelected(selected) => self.combo_box_selected = Some(selected),
             Message::KitTextInputChanged(value) => self.kit_text_input_value = value,
             Message::RadioSelected(selected) => self.radio_selected = selected,
             Message::SegmentSelected(index) => self.segment_selected = index,
@@ -127,6 +163,7 @@ impl Gallery {
                     Surface::Paper => Surface::Ink,
                 };
             }
+            Message::DndToggled(toggled) => self.dnd_toggled = toggled,
         }
         Task::none()
     }
@@ -205,7 +242,11 @@ impl Gallery {
                 .color(convert::ColorExt::into_iced(t.on_ink.secondary)),
         ]
         .spacing(10)
-        .width(180)
+        // A living specimen of `sizes.window_sidebar` (200 px, "standard
+        // width of an app window's navigation sidebar") — this nav column
+        // *is* a navigation sidebar, so it's sized from the token instead
+        // of a local constant.
+        .width(t.sizes.window_sidebar)
         .into()
     }
 
@@ -238,9 +279,26 @@ impl Gallery {
                 text("Kit").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.kit_column(primary)),
                 self.labeled_surface_row(secondary, self.kit_column(secondary)),
+                text("Containers").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.containers_row(primary)),
+                self.labeled_surface_row(secondary, self.containers_row(secondary)),
                 text("Rows, tiles & menus").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.rows_column(primary)),
                 self.labeled_surface_row(secondary, self.rows_column(secondary)),
+                // The Stage 17 table specimen (the future saola-files
+                // detailed list view): an app-window widget like the rows
+                // above it, so it gets the paired ink/paper treatment.
+                text("Table").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.table_column(primary)),
+                self.labeled_surface_row(secondary, self.table_column(secondary)),
+                // The file-picker breadcrumb trail (Stage 14, style guide
+                // §7): unlike the shell-chrome sections below, a breadcrumb
+                // renders in an app window on either surface, so it gets
+                // its own paired ink/paper section here rather than joining
+                // the ink-only run.
+                text("Breadcrumb").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.breadcrumb_row(primary)),
+                self.labeled_surface_row(secondary, self.breadcrumb_row(secondary)),
                 text("Composites").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.composites_column(primary)),
                 self.labeled_surface_row(secondary, self.composites_column(secondary)),
@@ -265,6 +323,28 @@ impl Gallery {
                 self.labeled_surface_row(Surface::Ink, self.avatar_row()),
                 text("Selection chrome").size(t.typography.size.section_heading),
                 self.labeled_surface_row(Surface::Ink, self.selection_chrome_pane()),
+                // The modal dialog kit (Stage 12): a dialog only ever floats
+                // over its scrim, which is always ink-tinted, so — like
+                // Scrims/Marquee/Avatar/Selection chrome above — this
+                // specimen exists only on ink.
+                text("Dialog").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.dialog_column()),
+                // The Stage 13 toast internals: like Dialog above, a toast
+                // only ever floats on the shell layer, so this section is
+                // ink-only too.
+                text("Notification toast").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.notification_column()),
+                // The power/boot menu's bare-icon row (Stage 14, style
+                // guide §6): like the toast above, it only ever floats on
+                // the shell scrim, so this section is ink-only too.
+                text("Bare-icon menu").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.bare_icon_menu_row()),
+                // The Stage 16 notification-centre mock: like the toast and
+                // bare-icon menu above, the centre is shell chrome that
+                // never renders on a paper window, so this section is
+                // ink-only too.
+                text("Notification centre").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.notification_centre_column()),
             ]
             .spacing(16)
             .width(Fill),
@@ -536,6 +616,25 @@ impl Gallery {
     /// given surface context.
     fn controls_column(&self, s: Surface) -> Element<'_, Message> {
         let t = &self.theme;
+        let caption = t.on(s).tertiary.into_iced();
+
+        // The Stage 15 indeterminate rule, beside the determinate one: the
+        // gallery is a static catalog with no animation clock (same device
+        // as `marquee_column`'s sweep and `notification_column`'s toast),
+        // so three fixed-elapsed-time frames stand in for the ping-pong —
+        // parked at the near edge, mid-sweep, and reversing at the far
+        // edge. At this column's 160 px width and `SEGMENT_FRACTION`
+        // (30%), the travel is 112 px; at `motion.marquee_speed` (24 px/s,
+        // reused — see the module docs on `saola_theme::indeterminate`)
+        // that's a 4667 ms one-way sweep, so 0 / 2333 / 4667 ms land
+        // exactly on "parked" / "half" / "far edge".
+        let indeterminate_frame = |label: &'static str, ms: u64| {
+            column![
+                indeterminate_rule(t, s, Duration::from_millis(ms)).width(160),
+                text(label).size(t.typography.size.label).color(caption),
+            ]
+            .spacing(t.sizes.gap_tight)
+        };
 
         column![
             text_input("Type something…", &self.text_input_value)
@@ -553,9 +652,44 @@ impl Gallery {
                     .on_toggle(Message::TogglerToggled),
             ]
             .spacing(24),
-            slider(0.0..=100.0, self.slider_value, Message::SliderChanged)
-                .style(style::slider::rest(t, s)),
-            progress_bar(0.0..=100.0, self.slider_value).style(style::progress::bar(t, s)),
+            // Horizontal beside vertical: `style::slider::rest` styles both
+            // — `iced::widget::vertical_slider` re-exports the horizontal
+            // module's `Catalog`/`Status`/`Style` verbatim, so no second
+            // helper exists or is needed (see the doc note on
+            // `style::slider::rest`).
+            row![
+                slider(0.0..=100.0, self.slider_value, Message::SliderChanged)
+                    .style(style::slider::rest(t, s)),
+                vertical_slider(0.0..=100.0, self.slider_value, Message::SliderChanged)
+                    .style(style::slider::rest(t, s))
+                    .height(96),
+            ]
+            .spacing(16)
+            .align_y(iced::Center),
+            row![
+                column![
+                    text("Determinate")
+                        .size(t.typography.size.label)
+                        .color(caption),
+                    widget::progress_rule(t, s, self.slider_value / 100.0),
+                ]
+                .spacing(t.sizes.gap_tight)
+                .width(Fill),
+                column![
+                    text("Indeterminate — ping-pong, no dwell")
+                        .size(t.typography.size.label)
+                        .color(caption),
+                    row![
+                        indeterminate_frame("0 ms — near edge", 0),
+                        indeterminate_frame("2333 ms — mid-sweep", 2333),
+                        indeterminate_frame("4667 ms — far edge, reversing", 4667),
+                    ]
+                    .spacing(12),
+                ]
+                .spacing(t.sizes.gap_tight),
+            ]
+            .spacing(24)
+            .align_y(iced::Center),
             pick_list(
                 PICK_LIST_OPTIONS,
                 self.pick_list_selected,
@@ -563,6 +697,35 @@ impl Gallery {
             )
             .style(style::pick_list::field(t, s))
             .menu_style(style::pick_list::menu(t, s)),
+            // The Stage 16 combo box: `combo_box::Catalog` forwards
+            // straight to `text_input::Catalog` + `menu::Catalog` with no
+            // fields of its own (see `style::combo_box`'s module docs), so
+            // its field and dropdown reuse `style::text_input::rest` and
+            // `style::pick_list::menu` verbatim — `style::combo_box::field`/
+            // `menu` below are thin, surface-aware names over exactly
+            // those two helpers. Only the closed field renders here: the
+            // dropdown is an overlay iced opens on focus, the same reason
+            // `pick_list` above never shows its own menu open in this
+            // static catalog either.
+            combo_box::ComboBox::new(
+                &self.combo_box_state,
+                "Search widgets…",
+                self.combo_box_selected.as_ref(),
+                Message::ComboBoxSelected,
+            )
+            .input_style(style::combo_box::field(t, s))
+            .menu_style(style::combo_box::menu(t, s)),
+            // The Stage 17 multi-line editor: `text_input::rest`'s look at
+            // the over-rounded-rectangle radius (`radii.inset`) instead of
+            // the pill — see `style::text_editor`'s module docs for the two
+            // deliberate deviations. Click in for the 2 px accent focus
+            // ring; drag-select for the accent selection.
+            text_editor(&self.editor_content)
+                .placeholder("Notes…")
+                .style(style::text_editor::rest(t, s))
+                .padding([10, 14])
+                .height(96)
+                .on_action(Message::EditorAction),
             widget::hairline(t, s),
             container(
                 scrollable(
@@ -767,6 +930,290 @@ impl Gallery {
         .into()
     }
 
+    /// Three container helpers that shipped without a gallery specimen
+    /// (CLAUDE.md's "new style helpers get a specimen" rule): `card`, `tile`,
+    /// and `tooltip` — in the given surface context.
+    fn containers_row(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+
+        let card = container(
+            column![
+                text("Card")
+                    .font(convert::display_font(t))
+                    .size(t.typography.size.section_heading),
+                text("radii.card · popover shadow on ink, fill_subtle inset on paper")
+                    .size(t.typography.size.secondary)
+                    .color(convert::ColorExt::into_iced(t.on(s).secondary)),
+            ]
+            .spacing(6),
+        )
+        .style(style::container::card(t, s))
+        .padding(18)
+        .width(260);
+
+        let tile = container(
+            text("Tile — radii.tile, a fill_subtle recess (not a floating layer)")
+                .size(t.typography.size.secondary)
+                .color(convert::ColorExt::into_iced(t.on(s).primary)),
+        )
+        .style(style::container::tile(t, s))
+        .padding(14)
+        .width(220);
+
+        // `tooltip` is exercised through the real `iced::widget::tooltip` —
+        // it styles via `container::Catalog`, same as `card`/`tile` above,
+        // so `style::container::tooltip` slots straight into `.style(...)`.
+        // The bubble is always ink (readable on either surface, per its
+        // doc), so only the trigger button below varies with `s`.
+        let tooltip_demo = tooltip(
+            button(text("Hover me").size(t.typography.size.body))
+                .style(style::button::rest(t, s))
+                .padding([10, 18])
+                .on_press(Message::DemoPressed),
+            container(text("A tooltip — ink, radii.tile, popover shadow"))
+                .style(style::container::tooltip(t))
+                .padding(10),
+            tooltip::Position::Bottom,
+        );
+
+        row![card, tile, tooltip_demo]
+            .spacing(16)
+            .align_y(iced::Center)
+            .into()
+    }
+
+    /// The Stage 12 modal dialog kit's full assembly recipe, as one static
+    /// specimen: a `ScrimKind::Modal` backdrop (`style::container::scrim`)
+    /// filling the swatch region, with a `style::dialog::surface` card
+    /// (`sizes.dialog_width`) centered on top of it — title at
+    /// `size.dialog_title` in the display face, body text, and a
+    /// `widget::footer_strip` holding `button::rest` (Cancel) /
+    /// `button::active` (Discard) actions. Ink-only: a dialog only ever
+    /// floats over its (always ink-tinted) scrim, so unlike most Widgets
+    /// sections there is no "on paper" twin.
+    fn dialog_column(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let size = t.typography.size.body;
+
+        let title = text("Discard changes?")
+            .font(convert::display_font(t))
+            .size(t.typography.size.dialog_title)
+            .color(convert::ColorExt::into_iced(t.on_paper.primary));
+
+        let body = text("This file has unsaved edits. Discarding them can't be undone.")
+            .size(size)
+            .color(convert::ColorExt::into_iced(t.on_paper.secondary));
+
+        let footer = widget::footer_strip(
+            t,
+            Surface::Paper,
+            row![
+                button(text("Cancel").size(size))
+                    .style(style::button::rest(t, Surface::Paper))
+                    .padding(t.paddings.dialog_button)
+                    .on_press(Message::DemoPressed),
+                Space::new().width(Fill),
+                button(text("Discard").size(size))
+                    .style(style::button::active(t, Surface::Paper))
+                    .padding(t.paddings.dialog_button)
+                    .on_press(Message::DemoPressed),
+            ]
+            .align_y(iced::Center),
+        );
+
+        let dialog = container(column![title, body, footer].spacing(16))
+            .style(style::dialog::surface(t))
+            .padding(t.sizes.popover_padding)
+            .width(t.sizes.dialog_width);
+
+        // The scrim behind it, per the recipe: `ScrimKind::Modal` filling
+        // the swatch region, the dialog centered both axes. The style
+        // guide's 7px compositor blur (`sizes.scrim_blur_modal`) has no
+        // iced-side render step — see `style::dialog`'s module docs.
+        container(dialog)
+            .style(style::container::scrim(t, ScrimKind::Modal))
+            .width(Fill)
+            .height(320)
+            .align_x(iced::Center)
+            .align_y(iced::Center)
+            .into()
+    }
+
+    /// The Stage 13 notification toast internals: `notification_card` +
+    /// `notification::icon_tile` + `notification::life_rule`, as a
+    /// fixed-elapsed-times filmstrip — the gallery has no animation clock
+    /// (same device as [`Self::marquee_column`]'s sweep and
+    /// [`Self::session_status_column`]'s breath), so three frames stand in
+    /// for the toast living out `motion.toast_in` → `toast_idle` →
+    /// `toast_out`: arriving (alpha rising, life still full), mid-idle
+    /// (alpha settled, life half-drained), and fading out (alpha falling,
+    /// life already at zero — nothing left to count down). The urgent
+    /// variant sits beside the filmstrip as a fourth, static frame:
+    /// `card_urgent` gets the ring but never the rule (10b: "a terracotta
+    /// ring and no life rule").
+    fn notification_column(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let caption = convert::ColorExt::into_iced(t.on_ink.tertiary);
+        let icon_tint = widget::role(t, Surface::Ink, Emphasis::Rest);
+
+        let toast = |elapsed_ms: u64| {
+            let elapsed = Duration::from_millis(elapsed_ms);
+            let alpha = motion::toast_alpha(t, elapsed);
+            let life = motion::life_fraction(t, elapsed);
+
+            let tile = container(icon(Icon::Image, t.sizes.icon_menu, icon_tint))
+                .width(t.sizes.icon_tile)
+                .height(t.sizes.icon_tile)
+                .align_x(iced::Center)
+                .align_y(iced::Center)
+                .style(style::notification::icon_tile(t));
+
+            let texts = column![
+                text("Screenshot saved")
+                    .font(convert::display_font(t))
+                    .size(t.typography.size.section_heading)
+                    .color(t.on_ink.primary.with_opacity(alpha)),
+                text("~/Pictures/capture-0142.png")
+                    .size(t.typography.size.secondary)
+                    .color(t.on_ink.secondary.with_opacity(alpha)),
+            ]
+            .spacing(4);
+
+            let body =
+                container(row![tile, texts].spacing(12).align_y(iced::Center)).padding([14, 18]);
+
+            let rule = progress_bar(0.0..=1.0, life)
+                .length(Fill)
+                .girth(t.sizes.life_rule)
+                .style(style::notification::life_rule(t));
+
+            container(column![body, rule])
+                .style(style::container::notification_card(t, alpha))
+                .width(300)
+        };
+
+        let filmstrip = row![
+            column![
+                toast(0),
+                text("0 ms — arriving")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+            column![
+                toast(3000),
+                text("3000 ms — mid-idle, draining")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+            column![
+                toast(6000),
+                text("6000 ms — fading out, expired")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+        ]
+        .spacing(16);
+
+        let urgent = container(
+            column![
+                text("Battery critical")
+                    .font(convert::display_font(t))
+                    .size(t.typography.size.section_heading)
+                    .color(convert::ColorExt::into_iced(t.on_paper.primary)),
+                text("6% remaining — plug in now")
+                    .size(t.typography.size.secondary)
+                    .color(convert::ColorExt::into_iced(t.on_paper.secondary)),
+            ]
+            .spacing(6),
+        )
+        .style(style::container::card_urgent(t, Surface::Ink))
+        .padding(18)
+        .width(300);
+
+        column![
+            filmstrip,
+            text(format!(
+                "toast_in {} ms · toast_idle {} ms · toast_out {} ms — life_rule drains across toast_idle only",
+                t.motion.toast_in, t.motion.toast_idle, t.motion.toast_out
+            ))
+            .size(t.typography.size.label)
+            .color(caption),
+            column![
+                text("Urgent — card_urgent, no life rule (10b)")
+                    .size(t.typography.size.label)
+                    .color(caption),
+                urgent,
+            ]
+            .spacing(t.sizes.gap_tight),
+        ]
+        .spacing(16)
+        .into()
+    }
+
+    /// The power/boot menu's bare-icon row (Stage 14, style guide §6):
+    /// `widget::bare_icon_item` for a handful of items, one forced into
+    /// `hovered = true` so the "ivory 55% at rest, full terracotta hovered"
+    /// contrast the concepts describe is visible without a live cursor —
+    /// the same fixed-snapshot device the toast filmstrip above uses for
+    /// motion it can't otherwise show statically.
+    fn bare_icon_menu_row(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        row![
+            widget::bare_icon_item(t, Icon::Lock, "Lock", false, Some(Message::DemoPressed)),
+            widget::bare_icon_item(
+                t,
+                Icon::RotateCcw,
+                "Restart",
+                true,
+                Some(Message::DemoPressed)
+            ),
+            widget::bare_icon_item(t, Icon::X, "Cancel", false, Some(Message::DemoPressed)),
+        ]
+        .spacing(t.sizes.island_gap)
+        .into()
+    }
+
+    /// A mini notification-centre mock (Stage 16, style guide §6): the
+    /// centre itself is `sizes.notification_centre_width` (460 px) wide,
+    /// grouped by app with collapsible groups. `widget::group_header` only
+    /// ever shows one disclosure state at a time, so this specimen stacks
+    /// one collapsed group and one expanded group to put both readings on
+    /// screen at once, a hairline, then the DND `toggler` row the centre's
+    /// header carries — everything constrained to the real
+    /// `notification_centre_width` token rather than the page's own `Fill`.
+    /// Ink-only, like the toast and bare-icon menu sections above: the
+    /// notification centre is shell chrome, never drawn on a paper window.
+    fn notification_centre_column(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let s = Surface::Ink;
+
+        let dnd_row = container(
+            row![
+                text("Do Not Disturb").size(t.typography.size.body),
+                Space::new().width(Fill),
+                toggler(self.dnd_toggled)
+                    .style(style::toggles::toggler(t, s))
+                    .on_toggle(Message::DndToggled),
+            ]
+            .align_y(iced::Center)
+            .width(Fill),
+        )
+        .padding(t.paddings.strip);
+
+        column![
+            widget::group_header(t, "Messages", 3, true, Some(Message::DemoPressed)),
+            widget::group_header(t, "Mail", 12, false, Some(Message::DemoPressed)),
+            widget::hairline(t, s),
+            dnd_row,
+        ]
+        .spacing(t.sizes.gap_tight)
+        .width(t.sizes.notification_centre_width)
+        .into()
+    }
+
     /// The file-manager kit: `button::list_row` rest/selected/focused side
     /// by side, the same rows composed inside a `container::inset` panel
     /// (the sidebar/toolbar shape — `tile`'s recipe at `radii.inset`), the
@@ -902,6 +1349,82 @@ impl Gallery {
         .spacing(16)
         .width(Fill)
         .into()
+    }
+
+    /// The Stage 17 `iced::widget::table` specimen: a 3-column, 4-row
+    /// detailed list (the saola-files columns view's shape). What Saola
+    /// *can* own here is the cell content and the geometry — header cells
+    /// in the `text::label` role per `section_label` conventions, body
+    /// cells in `text::body`/`text::secondary`, the row idiom's
+    /// "horizontal hairlines only" via `.separator_x(0.0)` /
+    /// `.separator_y(sizes.hairline)`, and `paddings.strip`-shaped cell
+    /// padding. What it can't own yet is the separator *color*:
+    /// iced_widget 0.14.2's `Table` has no `.style(...)` builder (see
+    /// `style::table`'s module docs), so the hairlines below draw in the
+    /// app palette's derived `background.strong` instead of
+    /// `style::table::rest`'s `divider` role until an iced release ships
+    /// the builder.
+    fn table_column(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+
+        // Rows are cloned per column by `Table::new`, so plain `Copy`
+        // tuples of `&'static str` keep the demo free of allocation.
+        type Row = (&'static str, &'static str, &'static str);
+        const FILES: [Row; 4] = [
+            ("Field notes.md", "4.1 KiB", "Today 09:12"),
+            ("Concept sketches", "12 items", "Yesterday"),
+            ("saola-mock.svg", "18.6 KiB", "Aug 2"),
+            ("Recordings", "3 items", "Jul 28"),
+        ];
+
+        table(
+            [
+                table::column(widget::text::label(t, s, "NAME"), move |file: Row| {
+                    widget::text::body(t, s, file.0)
+                })
+                .width(Fill),
+                table::column(widget::text::label(t, s, "SIZE"), move |file: Row| {
+                    widget::text::secondary(t, s, file.1)
+                }),
+                table::column(widget::text::label(t, s, "MODIFIED"), move |file: Row| {
+                    widget::text::secondary(t, s, file.2)
+                }),
+            ],
+            FILES,
+        )
+        .width(Fill)
+        .padding_x(t.paddings.strip[1])
+        .padding_y(t.paddings.strip[0])
+        // The row idiom: hairlines between rows, no vertical column rules.
+        .separator_x(0.0)
+        .separator_y(t.sizes.hairline)
+        .into()
+    }
+
+    /// `widget::breadcrumb` (Stage 14, style guide §7): a short trail
+    /// ending on the current folder, and a longer one so the
+    /// `Icon::ChevronRight` separator chain reads across more than one hop.
+    /// The current crumb (last segment, `on_press: None`) draws
+    /// emphasized — `style::button::breadcrumb`'s terracotta "on" look —
+    /// while every other crumb is quiet until hovered.
+    fn breadcrumb_row(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+        let short = widget::breadcrumb(
+            t,
+            s,
+            &[("Home", Some(Message::DemoPressed)), ("Documents", None)],
+        );
+        let long = widget::breadcrumb(
+            t,
+            s,
+            &[
+                ("Home", Some(Message::DemoPressed)),
+                ("Projects", Some(Message::DemoPressed)),
+                ("saola-theme", Some(Message::DemoPressed)),
+                ("src", None),
+            ],
+        );
+        column![short, long].spacing(12).into()
     }
 
     /// The bundled composite constructors from `widget`: the pill/icon

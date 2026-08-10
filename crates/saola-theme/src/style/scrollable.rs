@@ -8,6 +8,12 @@
 //! (the draggable thumb) is ivory/fill at rest and terracotta while
 //! dragged — the familiar off/on split, expressed as hover/drag instead of a
 //! boolean since a scrollbar has no "on" state of its own.
+//!
+//! `sizes.track_inset` (the gap between a scrollbar's rail and the content
+//! it scrolls) is not read here: `scrollable::Style` has no margin field for
+//! it — the gap is set on the widget itself, via
+//! `scrollable::Scrollbar::margin(...)` when the consumer builds the
+//! `Direction`. This is a documentary pointer to that token, not wired code.
 
 use iced::widget::container;
 use iced::widget::scrollable::{AutoScroll, Rail, Scroller, Status, Style};

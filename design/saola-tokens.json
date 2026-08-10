@@ -122,7 +122,11 @@
     "iconBare": 32,
     "iconStrokeWidth": 2.75,
     "windowBorder": 2,
-    "windowHeader": 46
+    "windowHeader": 46,
+
+    "scrimBlurLauncher": 4,
+    "scrimBlurOverview": 6,
+    "scrimBlurModal": 7
   },
 
   "shadow": {

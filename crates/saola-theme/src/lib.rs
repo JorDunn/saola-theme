@@ -36,13 +36,16 @@
 //! chrome for ordinary decorationless toplevels (header, frame, resize
 //! grips, the transparent clear color) in [`chrome`], the §7 avatar
 //! composite (photo resolution, initials fallback, the disc view) in
-//! [`avatar`], and the §5 ping-pong text marquee in [`marquee`].
+//! [`avatar`], the §5 ping-pong text marquee in [`marquee`], and the §7
+//! indeterminate progress rule (a `canvas`-drawn ping-pong sweep, the
+//! marquee's sibling for a boot/splash countdown) in [`indeterminate`].
 
 pub mod avatar;
 pub mod canvas;
 pub mod chrome;
 pub mod convert;
 pub mod icon;
+pub mod indeterminate;
 pub mod marquee;
 pub mod motion;
 pub mod style;

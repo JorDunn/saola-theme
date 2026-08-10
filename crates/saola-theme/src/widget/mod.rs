@@ -41,7 +41,9 @@
 pub mod text;
 
 use iced::widget::text as text_widget;
-use iced::widget::{button, container, rule, Container, Row, Rule, Space};
+use iced::widget::{
+    button, container, progress_bar, rule, Column, Container, ProgressBar, Row, Rule, Space,
+};
 use iced::{Center, Element, Fill};
 use saola_tokens::{Surface, Theme};
 
@@ -88,6 +90,38 @@ pub fn separator<'a, M: 'a>(t: &Theme, s: Surface) -> Element<'a, M> {
         .padding(iced::padding::vertical(t.sizes.popover_separator_gap))
         .width(Fill)
         .into()
+}
+
+// ---------------------------------------------------------------------------
+// Progress
+// ---------------------------------------------------------------------------
+
+/// The determinate progress rule at the canonical `sizes.progress_girth`
+/// thickness: fills the available width, styled [`style::progress::bar`].
+/// Exists so a consumer never hand-picks a girth for an ordinary
+/// `progress_bar` the way [`hairline`] exists so nobody hand-picks a
+/// hairline's thickness.
+///
+/// `value` is already-normalized `0.0..=1.0` progress — matching
+/// [`crate::motion::life_fraction`]'s convention — rather than
+/// `progress_bar`'s own doc example range of `0.0..=100.0`.
+///
+/// Pairs with [`crate::indeterminate::indeterminate_rule`], the
+/// §7 indeterminate sibling wired to the same `sizes.progress_girth` token,
+/// so a boot menu can swap between the determinate and indeterminate rule
+/// without either one picking a different height.
+///
+/// ```no_run
+/// use saola_theme::{widget, Surface, Theme};
+///
+/// let t = Theme::saola();
+/// let _rule: iced::widget::ProgressBar<'_> = widget::progress_rule(&t, Surface::Paper, 0.4);
+/// ```
+pub fn progress_rule<'a>(t: &Theme, s: Surface, value: f32) -> ProgressBar<'a> {
+    progress_bar(0.0..=1.0, value)
+        .length(Fill)
+        .girth(t.sizes.progress_girth)
+        .style(style::progress::bar(t, s))
 }
 
 // ---------------------------------------------------------------------------
@@ -409,15 +443,147 @@ pub fn menu_row<'a, M: Clone + 'a>(
 }
 
 // ---------------------------------------------------------------------------
+// Breadcrumb trail
+// ---------------------------------------------------------------------------
+
+/// A file-picker breadcrumb trail (style guide §7): one
+/// [`style::button::breadcrumb`] pill per crumb with `paddings.breadcrumb`
+/// applied — the padding a button *style* closure can't set, same gap this
+/// crate's other token-plus-style pairings close (`life_rule`/`icon_tile`'s
+/// split in Stage 13, `hairline`'s thickness above) — separated by a
+/// `sizes.icon_bar`-sized [`Icon::ChevronRight`] glyph in the surface's
+/// `quaternary` role.
+///
+/// The separator is traced from the concepts' file-picker row (`9f File
+/// picker ink`'s `crumbsInk` list): each segment is followed by an `#i-chev`
+/// glyph — Lucide's `chevron-right`, unrotated — stroked at `rgba(*, .35)`,
+/// which lands almost exactly on `quaternary`'s alpha step (`.40` on ink,
+/// `.45` on paper) rather than any other role on the ladder.
+///
+/// A crumb's `on_press` doubles as "is this the current folder?" — `None`
+/// marks the current crumb, mirroring [`menu_row`]'s "enabled derived from
+/// `on_press.is_some()`" convention: it renders emphasized via
+/// [`style::button::breadcrumb`]'s `is_current` branch and captures no
+/// clicks, matching the reality that navigating to the folder you're
+/// already standing in should do nothing. Every other crumb is clickable
+/// and quiet until hovered.
+///
+/// ```no_run
+/// use saola_theme::{widget, Surface, Theme};
+///
+/// let t = Theme::saola();
+/// let _trail: iced::Element<'_, ()> = widget::breadcrumb(
+///     &t,
+///     Surface::Paper,
+///     &[("Home", Some(())), ("Projects", Some(())), ("saola-theme", None)],
+/// );
+/// ```
+pub fn breadcrumb<'a, M: Clone + 'a>(
+    t: &Theme,
+    s: Surface,
+    crumbs: &[(&'a str, Option<M>)],
+) -> Element<'a, M> {
+    let separator_tint = t.on(s).quaternary.into_iced();
+    let last = crumbs.len().saturating_sub(1);
+    let mut trail = Row::new().spacing(t.sizes.pill_gap).align_y(Center);
+    for (i, (label, on_press)) in crumbs.iter().enumerate() {
+        let is_current = on_press.is_none();
+        trail = trail.push(
+            button(
+                text_widget(*label)
+                    .font(ui_font(t))
+                    .size(t.typography.size.secondary),
+            )
+            .padding(t.paddings.breadcrumb)
+            .style(style::button::breadcrumb(t, s, is_current))
+            .on_press_maybe(on_press.clone()),
+        );
+        if i != last {
+            trail = trail.push(icon(Icon::ChevronRight, t.sizes.icon_bar, separator_tint));
+        }
+    }
+    trail.into()
+}
+
+// ---------------------------------------------------------------------------
+// Bare-icon menu (power / boot menu)
+// ---------------------------------------------------------------------------
+
+/// One item in a bare-icon menu — the power/boot menu's shape (style guide
+/// §6, captioned "bare icons on the panel — ivory at 55% at rest, full
+/// terracotta when hovered or selected"): the glyph at `sizes.icon_bare`
+/// (wired here — it had no callers before this), tinted `on_ink.tertiary`
+/// at rest (ivory's `.55`-alpha step — the concepts' "55%" verbatim) and
+/// [`Emphasis::Live`]'s ink-context accent (`palette.accent_light`, the same
+/// tint every other "on/selected" status glyph in this crate uses) when
+/// `hovered`. Reusing [`role`]/[`Emphasis`] here — rather than a new tint
+/// enum — is deliberate: the plan asked for it, and it is the same iced
+/// 0.14 workaround #3 every icon-bearing constructor in this module already
+/// documents (an `Svg`'s color is fixed at build time, so a button's live
+/// `Status` can't drive it — the caller has to pick the tint up front,
+/// which is exactly what `hovered` does here).
+///
+/// Below the glyph sits a `sizes.grid_tile_label`-tall reserved block —
+/// borrowing the "label band under a square item" token
+/// [`crate::style::button::selection_tile`]'s grid-tile geometry already
+/// uses — holding the label only when `hovered`, empty otherwise. Every
+/// item reserves the *same* height regardless of its own hover state, which
+/// is the point: the concepts caption this "one shared label" specifically
+/// so the row's height never shifts as different items hover in and out.
+///
+/// The outer button paints nothing at any state
+/// ([`style::button::bare_icon`]) — "icons directly on the surface" means
+/// no pill, no fill, ever; the glyph and its label carry the whole hover
+/// signal. Ink-only, no `Surface` parameter: these menus live on shell
+/// scrims (style guide §6), never a paper window.
+pub fn bare_icon_item<'a, M: Clone + 'a>(
+    t: &Theme,
+    kind: Icon,
+    label: &'a str,
+    hovered: bool,
+    on_press: Option<M>,
+) -> Element<'a, M> {
+    let tint = if hovered {
+        role(t, Surface::Ink, Emphasis::Live)
+    } else {
+        t.on_ink.tertiary.into_iced()
+    };
+    let caption: Element<'a, M> = if hovered {
+        text_widget(label)
+            .font(ui_font_regular(t))
+            .size(t.typography.size.secondary)
+            .color(tint)
+            .into()
+    } else {
+        Space::new().into()
+    };
+    let content = Column::new()
+        .align_x(Center)
+        .spacing(t.sizes.gap_tight)
+        .push(icon(kind, t.sizes.icon_bare, tint))
+        .push(
+            container(caption)
+                .width(Fill)
+                .height(t.sizes.grid_tile_label)
+                .align_x(Center)
+                .align_y(Center),
+        );
+    button(content)
+        .style(style::button::bare_icon(t))
+        .on_press_maybe(on_press)
+        .into()
+}
+
+// ---------------------------------------------------------------------------
 // Segmented control
 // ---------------------------------------------------------------------------
 
 /// Height of one segment in [`segmented_row`]: the track is padded
-/// `sizes.segment_inset` on every side, so this is what makes the assembled
+/// `sizes.track_inset` on every side, so this is what makes the assembled
 /// control land at exactly `sizes.hit_target_bar` tall (asserted in the
 /// tests below).
 fn segment_height(t: &Theme) -> f32 {
-    t.sizes.hit_target_bar - 2.0 * t.sizes.segment_inset
+    t.sizes.hit_target_bar - 2.0 * t.sizes.track_inset
 }
 
 /// A closed-set selector: a row of pill segments over a
@@ -425,8 +591,11 @@ fn segment_height(t: &Theme) -> f32 {
 /// option, the selected one lit terracotta. `secondary`-sized labels,
 /// centered per segment (the [`centered`]-style sandwich inlined, because
 /// each segment also centers horizontally); `sizes.island_gap` horizontal
-/// padding per segment; `sizes.segment_inset` as both the track's padding
-/// and the gap between segments.
+/// padding per segment; `sizes.track_inset` as the track's own padding
+/// (the "inset of a handle's travel inside its track" token, applied here
+/// to the segment row's travel inside the track container) and
+/// `sizes.segment_inset` as the gap between segments — two different roles
+/// that happen to share a value (4.0) today.
 ///
 /// Ported from saola-capture, where `app::segmented_row` and
 /// `editor::segmented_row` were near-identical twins (the second existing
@@ -452,12 +621,13 @@ where
     T: Clone + PartialEq,
     M: Clone + 'a,
 {
-    let inset = t.sizes.segment_inset;
+    let track_inset = t.sizes.track_inset;
+    let segment_gap = t.sizes.segment_inset;
     let height = segment_height(t);
     let font = ui_font(t);
     let size = t.typography.size.secondary;
 
-    let mut segments = Row::new().spacing(inset);
+    let mut segments = Row::new().spacing(segment_gap);
     for (value, label) in options {
         let is_selected = value == selected;
         // The centering sandwich, per segment: vertically load-bearing
@@ -479,8 +649,94 @@ where
     }
 
     container(segments)
-        .padding(inset)
+        .padding(track_inset)
         .style(style::segmented::track(t, s))
+        .into()
+}
+
+// ---------------------------------------------------------------------------
+// Notification centre
+// ---------------------------------------------------------------------------
+
+/// The notification-centre group-header row (style guide §6: the centre is
+/// `sizes.notification_centre_width` wide, grouped by app, collapsible
+/// groups): the app name in the [`text::label`] role, an unread-count
+/// [`style::container::chip`] (omitted when `count` is zero — a header with
+/// nothing unread doesn't need an empty pill), and a disclosure glyph that
+/// flips with `collapsed`.
+///
+/// Built over the same row mechanics [`quiet_row`]/[`list_row_container`]
+/// use ([`centered`]'s vertical-centering sandwich, `sizes.list_row` height,
+/// `paddings.strip` horizontal padding — [`menu_row`]'s exact geometry, since
+/// a group header is a menu-row twin that happens to carry a chip and a
+/// glyph instead of a leading icon) and [`style::button::list_row`] for its
+/// rest/hover states — a header is a row you click to toggle, not a control
+/// with a selected/focused identity, so `selected`/`focused` are both
+/// `false`.
+///
+/// There is no `Icon::ChevronDown` asset — only [`Icon::ChevronRight`] — so
+/// the flip is a `Svg::rotation` (`iced_widget::svg::Svg::rotation`,
+/// `Rotation::Floating` via its `From<f32>` impl) rather than a second
+/// glyph: `0.0` collapsed (pointing at the group, closed), a quarter turn
+/// clockwise when expanded (pointing down at the revealed rows). Floating
+/// rotation keeps the glyph's own layout box unrotated, so it doesn't
+/// nudge the row's height or the chip's position as it turns.
+///
+/// Ink-only, no `Surface` parameter: the notification centre lives on the
+/// shell layer (style guide §6), the same ink-only rule
+/// [`crate::style::notification`]'s toast internals already follow.
+///
+/// `on_toggle: None` renders the disabled look and captures nothing — the
+/// same `button` convention every other constructor in this module uses.
+///
+/// ```no_run
+/// use saola_theme::{widget, Theme};
+///
+/// let t = Theme::saola();
+/// let _closed: iced::Element<'_, ()> =
+///     widget::group_header(&t, "Files", 3, true, Some(()));
+/// let _open: iced::Element<'_, ()> =
+///     widget::group_header(&t, "Files", 3, false, Some(()));
+/// ```
+pub fn group_header<'a, M: Clone + 'a>(
+    t: &Theme,
+    app_name: &'a str,
+    count: usize,
+    collapsed: bool,
+    on_toggle: Option<M>,
+) -> Element<'a, M> {
+    let s = Surface::Ink;
+
+    let mut row = Row::new()
+        .spacing(t.sizes.pill_gap)
+        .align_y(Center)
+        .width(Fill)
+        .push(text::label(t, s, app_name));
+
+    if count > 0 {
+        row = row.push(
+            container(text_widget(count.to_string()).size(t.typography.size.meta))
+                .style(style::container::chip(t, s))
+                .padding([2.0, 8.0]),
+        );
+    }
+
+    let chevron_tint = t.on(s).secondary.into_iced();
+    let rotation: f32 = if collapsed {
+        0.0
+    } else {
+        90.0_f32.to_radians()
+    };
+    row = row
+        .push(Space::new().width(Fill))
+        .push(icon(Icon::ChevronRight, t.sizes.icon_bar, chevron_tint).rotation(rotation));
+
+    button(centered(row))
+        .width(Fill)
+        .height(t.sizes.list_row)
+        .padding(t.paddings.strip)
+        .style(style::button::list_row(t, s, false, false))
+        .on_press_maybe(on_toggle)
         .into()
 }
 
@@ -582,13 +838,13 @@ mod tests {
         }
     }
 
-    /// The design call [`segment_height`] encodes: track padding + segment
-    /// height must total exactly `hit_target_bar`, and the segment must
-    /// keep a real height.
+    /// The design call [`segment_height`] encodes: track padding
+    /// (`track_inset`) + segment height must total exactly `hit_target_bar`,
+    /// and the segment must keep a real height.
     #[test]
     fn segmented_track_totals_hit_target_bar() {
         let t = Theme::saola();
-        let total = segment_height(&t) + 2.0 * t.sizes.segment_inset;
+        let total = segment_height(&t) + 2.0 * t.sizes.track_inset;
         assert_eq!(total, t.sizes.hit_target_bar);
         assert!(segment_height(&t) > 0.0);
     }
@@ -601,6 +857,7 @@ mod tests {
         let s = Surface::Ink;
 
         let _: Element<'_, ()> = separator(&t, s);
+        let _: iced::widget::ProgressBar<'_> = progress_rule(&t, s, 0.4);
         let _: Element<'_, ()> = quiet_row(&t, s, "no backend");
         let _: Element<'_, ()> = empty_state(&t, s, "This folder is empty");
         let _: Element<'_, ()> = section_label(&t, s, "PLACES");
@@ -644,7 +901,35 @@ mod tests {
         );
         let _: Element<'_, ()> =
             segmented_row(&t, s, &[(0u8, "Files"), (1, "Folders")], &0u8, |_| ());
+        let _: Element<'_, ()> = breadcrumb(
+            &t,
+            s,
+            &[
+                ("Home", Some(())),
+                ("Projects", Some(())),
+                ("saola-theme", None),
+            ],
+        );
+        let _: Element<'_, ()> = bare_icon_item(&t, Icon::Lock, "Lock", false, Some(()));
+        let _: Element<'_, ()> = bare_icon_item(&t, Icon::Lock, "Lock", true, Some(()));
+        let _: Element<'_, ()> = group_header(&t, "Files", 3, true, Some(()));
+        let _: Element<'_, ()> = group_header(&t, "Files", 3, false, Some(()));
+        let _: Element<'_, ()> = group_header(&t, "Settings", 0, true, None);
         let _: iced::widget::Text<'_> = text::body(&t, s, "body");
         let _: iced::widget::Text<'_> = text::error(&t, s, "wrong password");
+    }
+
+    /// A breadcrumb crumb with `on_press: None` is the current-folder crumb
+    /// — [`breadcrumb`]'s documented convention, mirroring [`menu_row`]'s
+    /// "enabled derived from `on_press.is_some()`". This only asserts the
+    /// convention compiles and holds for a plain `Option`; the emphasized
+    /// *rendering* itself is exercised by [`style::button::breadcrumb`]'s
+    /// `is_current` branch, which has no `Style` output to assert against
+    /// without a renderer.
+    #[test]
+    fn breadcrumb_current_crumb_has_no_on_press() {
+        let crumbs: &[(&str, Option<()>)] = &[("Home", Some(())), ("saola-theme", None)];
+        let is_current: Vec<bool> = crumbs.iter().map(|(_, m)| m.is_none()).collect();
+        assert_eq!(is_current, vec![false, true]);
     }
 }
