@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.5.0...saola-theme-v0.6.0) - 2026-08-10
+
+### Added
+
+- gallery specimens for the upstreamed helpers
+- add the marquee widget — style guide §5's ping-pong sweep
+- add the avatar composite — resolution, initials, and view
+- add the motion module — fraction, toast_alpha, breath
+- Clone style closures, ring helpers, and consumer-ported styles
+- add opacity-scaling and scrim-gradient bridges to convert
+- port saola-files feedback — inset/list_row/hairline helpers, hairline and window_sidebar tokens
+
+### Changed
+
+- unify ScrimKind and read selection-chrome values from tokens
+- [**breaking**] remove dead panel_pill_media and media_title_max_width tokens
+
 ## [0.5.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.4.0...saola-theme-v0.5.0) - 2026-08-02
 
 ### Added
