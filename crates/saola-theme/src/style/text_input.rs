@@ -49,8 +49,16 @@ fn fill(t: &Theme, s: Surface) -> Fill {
             Surface::Ink => t.palette.ink,
             Surface::Paper => on.primary,
         },
-        icon: on.secondary,
-        placeholder: on.quaternary,
+        // The field's own fill is paper-like in *both* surface contexts
+        // (opaque ivory on ink, translucent ink-fill over ivory paper), so
+        // icon/placeholder read from the on-paper ladder on both — not
+        // `on(s)`. On ink, `on_ink.secondary`/`on_ink.quaternary` are
+        // translucent *ivory* steps, which would composite over the opaque
+        // ivory field to invisible. Same reasoning as
+        // `text_editor::rest`'s placeholder (see that module's doc
+        // comment).
+        icon: t.on_paper.secondary,
+        placeholder: t.on_paper.quaternary,
         disabled_bg: on.fill_subtle,
         disabled_text: on.disabled,
     }
