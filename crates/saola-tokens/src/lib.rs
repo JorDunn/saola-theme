@@ -40,9 +40,10 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 pub use color::{Color, ColorParseError};
-pub use palette::{OnSurface, Palette, Scrim, Surface};
+pub use palette::{GradientStop, OnSurface, Palette, Scrim, ScrimGradient, Surface};
 pub use tokens::{
-    AnsiColors, FontSizes, FontWeights, Motion, Radii, Shadow, Shadows, Sizes, Terminal, Typography,
+    AnsiColors, FontSizes, FontWeights, Motion, Paddings, Radii, Shadow, Shadows, Sizes, Terminal,
+    Typography,
 };
 
 /// A complete Saola theme: the color identity, both on-surface role sets,
@@ -65,6 +66,7 @@ pub struct Theme {
     pub typography: Typography,
     pub radii: Radii,
     pub sizes: Sizes,
+    pub paddings: Paddings,
     pub shadows: Shadows,
     pub motion: Motion,
     pub terminal: Terminal,
@@ -82,9 +84,35 @@ impl Theme {
             typography: Typography::default(),
             radii: Radii::default(),
             sizes: Sizes::default(),
+            paddings: Paddings::default(),
             shadows: Shadows::default(),
             motion: Motion::default(),
             terminal: Terminal::default(),
+        }
+    }
+
+    /// A full theme built from [`Theme::saola`] but with the given palette,
+    /// with the derived color families re-stepped from it: `on_ink` from
+    /// `palette.paper` ([`OnSurface::on_ink_from`]), `on_paper` from
+    /// `palette.ink` ([`OnSurface::on_paper_from`]), and every scrim from
+    /// `palette.ink` ([`Scrim::from_ink`]).
+    ///
+    /// This is the constructor for consumers that let users override the
+    /// identity colors (e.g. saola-panel's `colors { }` config block) —
+    /// without it, an overridden `palette` leaves every text/divider/fill
+    /// role stepped from the *built-in* ink and paper.
+    ///
+    /// `accent_light` and `accent_dark` are the caller's responsibility:
+    /// they are independent palette entries (accent-tinted text colors for
+    /// one surface each), not derivable from `accent`, so this constructor
+    /// uses them exactly as passed in.
+    pub fn with_palette(palette: Palette) -> Self {
+        Theme {
+            on_ink: OnSurface::on_ink_from(palette.paper),
+            on_paper: OnSurface::on_paper_from(palette.ink),
+            scrim: Scrim::from_ink(palette.ink),
+            palette,
+            ..Theme::saola()
         }
     }
 
@@ -172,6 +200,109 @@ mod tests {
     #[test]
     fn default_equals_saola() {
         assert_eq!(Theme::default(), Theme::saola());
+    }
+
+    #[test]
+    fn with_palette_rederives_roles_from_the_custom_colors() {
+        let custom_ink = Color::rgb(0x1A, 0x14, 0x22);
+        let custom_paper = Color::rgb(0xF2, 0xEE, 0xFF);
+        let palette = Palette {
+            ink: custom_ink,
+            paper: custom_paper,
+            ..Palette::default()
+        };
+        let theme = Theme::with_palette(palette);
+
+        // Every on-paper role must carry the custom ink's RGB (the alpha
+        // ladder is what varies per role, never the base color)...
+        for role in [
+            theme.on_paper.primary,
+            theme.on_paper.secondary,
+            theme.on_paper.tertiary,
+            theme.on_paper.quaternary,
+            theme.on_paper.disabled,
+            theme.on_paper.divider,
+            theme.on_paper.fill_subtle,
+            theme.on_paper.fill,
+            theme.on_paper.fill_strong,
+            theme.on_paper.track,
+        ] {
+            assert_eq!((role.r, role.g, role.b), (0x1A, 0x14, 0x22));
+        }
+        // ...and likewise on-ink roles carry the custom paper, and scrims
+        // the custom ink.
+        assert_eq!(
+            (
+                theme.on_ink.primary.r,
+                theme.on_ink.primary.g,
+                theme.on_ink.primary.b
+            ),
+            (0xF2, 0xEE, 0xFF)
+        );
+        assert_eq!(
+            (
+                theme.scrim.lock_awake.r,
+                theme.scrim.lock_awake.g,
+                theme.scrim.lock_awake.b
+            ),
+            (0x1A, 0x14, 0x22)
+        );
+        // Alpha bytes are unchanged from the built-in ladder.
+        assert_eq!(
+            theme.on_paper.secondary.a,
+            Theme::saola().on_paper.secondary.a
+        );
+        assert_eq!(theme.scrim.lock_awake.a, Theme::saola().scrim.lock_awake.a);
+    }
+
+    #[test]
+    fn with_palette_of_the_default_palette_is_saola() {
+        assert_eq!(Theme::with_palette(Palette::default()), Theme::saola());
+    }
+
+    #[test]
+    fn scrim_gradient_round_trips_through_toml() {
+        let theme = Theme::saola();
+        let parsed = Theme::from_toml_str(&theme.to_toml_string().unwrap()).unwrap();
+        assert_eq!(parsed.scrim.lock_rest, theme.scrim.lock_rest);
+        assert_eq!(parsed.scrim.canvas, theme.scrim.canvas);
+    }
+
+    #[test]
+    fn scrim_gradient_matches_the_style_guide_values() {
+        // linear-gradient(180deg, rgba(12,10,0,.18), rgba(12,10,0,.02) 34%,
+        // rgba(12,10,0,.34)) — and canvas is ink at 0.55.
+        let g = Theme::saola().scrim.lock_rest;
+        assert_eq!(g.angle_deg, 180.0);
+        let expected = [(46u8, 0.0f32), (5, 0.34), (87, 1.0)];
+        for (stop, (alpha, position)) in g.stops.iter().zip(expected) {
+            assert_eq!(
+                (stop.color.r, stop.color.g, stop.color.b),
+                (0x0C, 0x0A, 0x00)
+            );
+            assert_eq!(stop.color.a, alpha);
+            assert_eq!(stop.position, position);
+        }
+        assert_eq!(
+            Theme::saola().scrim.canvas,
+            Color::rgba(0x0C, 0x0A, 0x00, 140)
+        );
+    }
+
+    #[test]
+    fn partial_scrim_table_without_gradient_fields_still_parses() {
+        // A theme file written before `lock_rest`/`canvas` existed — one
+        // that overrides only a flat scrim — must still parse, with the
+        // new fields at their built-in defaults.
+        let parsed = Theme::from_toml_str(
+            r##"
+            [scrim]
+            lock_awake = "#0C0A009E"
+            "##,
+        )
+        .unwrap();
+        assert_eq!(parsed.scrim.lock_rest, Theme::saola().scrim.lock_rest);
+        assert_eq!(parsed.scrim.canvas, Theme::saola().scrim.canvas);
     }
 
     #[test]

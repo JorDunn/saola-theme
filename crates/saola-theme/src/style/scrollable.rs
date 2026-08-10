@@ -16,7 +16,7 @@ use saola_tokens::{Surface, Theme};
 
 use crate::convert::ColorExt;
 
-pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
+pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     let on = *t.on(s);
     let accent = t.palette.accent;
     let track = on.track;

@@ -32,6 +32,17 @@ use saola_tokens::Theme;
 pub trait ColorExt {
     /// Convert into an `iced::Color` by dividing every channel by 255.
     fn into_iced(self) -> iced::Color;
+
+    /// Convert into an `iced::Color` with the alpha channel multiplied by
+    /// `factor` — the fade primitive for iced 0.14, which has no subtree
+    /// opacity: a view fading a whole card scales every color it paints
+    /// instead (saola-capture's toast and saola-files' undo toast each
+    /// carried an identical local `scale_alpha` closure doing exactly
+    /// this). `factor` is used as given — animation clocks should clamp to
+    /// `0.0..=1.0` before calling (see
+    /// [`crate::motion::toast_alpha`], which already returns clamped
+    /// values).
+    fn with_opacity(self, factor: f32) -> iced::Color;
 }
 
 impl ColorExt for saola_tokens::Color {
@@ -43,6 +54,12 @@ impl ColorExt for saola_tokens::Color {
             a: f32::from(self.a) / 255.0,
         }
     }
+
+    fn with_opacity(self, factor: f32) -> iced::Color {
+        let mut color = self.into_iced();
+        color.a *= factor;
+        color
+    }
 }
 
 /// Conversion from `saola_tokens::Shadow` into `iced::Shadow`.
@@ -52,6 +69,13 @@ impl ColorExt for saola_tokens::Color {
 pub trait ShadowExt {
     /// Convert into an `iced::Shadow`.
     fn into_iced(self) -> iced::Shadow;
+
+    /// Convert into an `iced::Shadow` with the shadow color's alpha
+    /// multiplied by `factor` — a fading element's shadow must fade with
+    /// it, so this is [`ColorExt::with_opacity`] for the one place a color
+    /// hides inside another style value (both consumer `scale_alpha`
+    /// derivations scaled `shadow.color.a` by hand alongside their colors).
+    fn with_opacity(self, factor: f32) -> iced::Shadow;
 }
 
 impl ShadowExt for saola_tokens::Shadow {
@@ -61,6 +85,37 @@ impl ShadowExt for saola_tokens::Shadow {
             offset: iced::Vector::new(0.0, self.offset_y),
             blur_radius: self.blur,
         }
+    }
+
+    fn with_opacity(self, factor: f32) -> iced::Shadow {
+        iced::Shadow {
+            color: self.color.with_opacity(factor),
+            ..self.into_iced()
+        }
+    }
+}
+
+/// Conversion from `saola_tokens::ScrimGradient` into an [`iced::Gradient`].
+///
+/// The token's `angle_deg` uses the CSS convention (degrees clockwise from
+/// pointing up, `180.0` = top → bottom). iced 0.14's gradient angle turns
+/// out to use the *same* convention, just in radians: `Radians::to_distance`
+/// (in `iced_core::angle`) subtracts `FRAC_PI_2` and works in screen
+/// coordinates (+y down), which lands offset `0.0` of an `angle: 0` gradient
+/// at the *bottom* edge — exactly CSS's `linear-gradient(0deg, ...)`. So the
+/// bridge is a plain degrees→radians conversion, no axis flip.
+pub trait GradientExt {
+    /// Convert into an `iced::Gradient` (always `Gradient::Linear`).
+    fn into_iced(self) -> iced::Gradient;
+}
+
+impl GradientExt for saola_tokens::ScrimGradient {
+    fn into_iced(self) -> iced::Gradient {
+        let mut linear = iced::gradient::Linear::new(iced::Degrees(self.angle_deg));
+        for stop in self.stops {
+            linear = linear.add_stop(stop.position, stop.color.into_iced());
+        }
+        iced::Gradient::Linear(linear)
     }
 }
 
@@ -231,5 +286,49 @@ mod tests {
     fn leaked_font_name_is_static_and_equal() {
         let name: &'static str = leak_font_name("IBM Plex Sans");
         assert_eq!(name, "IBM Plex Sans");
+    }
+
+    #[test]
+    fn with_opacity_scales_only_alpha() {
+        let c = Color {
+            r: 255,
+            g: 0,
+            b: 51,
+            a: 255,
+        };
+        let faded = c.with_opacity(0.5);
+        let full = c.into_iced();
+        assert_eq!(faded.r, full.r);
+        assert_eq!(faded.g, full.g);
+        assert_eq!(faded.b, full.b);
+        assert!((faded.a - 0.5).abs() < 1e-6);
+        // Composes with an already-translucent color multiplicatively.
+        let half = Color { a: 128, ..c }.with_opacity(0.5);
+        assert!((half.a - (128.0 / 255.0) * 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn shadow_with_opacity_scales_color_keeps_geometry() {
+        let t = Theme::saola();
+        let faded = t.shadows.popover.with_opacity(0.25);
+        let full = t.shadows.popover.into_iced();
+        assert_eq!(faded.offset, full.offset);
+        assert_eq!(faded.blur_radius, full.blur_radius);
+        assert!((faded.color.a - full.color.a * 0.25).abs() < 1e-6);
+    }
+
+    #[test]
+    fn scrim_gradient_maps_angle_and_stops() {
+        let t = Theme::saola();
+        let gradient = t.scrim.lock_rest.into_iced();
+        let iced::Gradient::Linear(linear) = gradient;
+        // CSS degrees → iced radians, same convention, no axis flip.
+        assert!((linear.angle.0 - t.scrim.lock_rest.angle_deg.to_radians()).abs() < 1e-6);
+        let stops: Vec<_> = linear.stops.iter().flatten().collect();
+        assert_eq!(stops.len(), 3);
+        for (stop, token_stop) in stops.iter().zip(t.scrim.lock_rest.stops.iter()) {
+            assert_eq!(stop.offset, token_stop.position);
+            assert_eq!(stop.color, token_stop.color.into_iced());
+        }
     }
 }

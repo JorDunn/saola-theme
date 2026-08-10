@@ -9,4 +9,18 @@ license = "MIT OR Apache-2.0"
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
 thiserror = "2"
-iced = { version = "0.14", default-features = false, features = ["wayland", "thread-pool"] }
+# "svg" and "canvas" are lib features (not left to consumers like the
+# renderer choice): the shared icon module embeds and draws SVG assets
+# (`iced::widget::svg` only exists with "svg" on), and `saola_theme::canvas`
+# (the selection-chrome token bridge) is frame drawing that needs the
+# "canvas" widget API. "advanced" exposes `iced::advanced` for
+# `saola_theme::marquee`'s custom `Widget` impl (the §5 sweep needs the
+# renderer's own paragraph measurement — `Plain<Paragraph>` — which iced
+# gates behind it). "image-without-codecs" exists for `saola_theme::avatar`:
+# it enables the `image` *widget* (the photo arm draws through it) while
+# deliberately leaving image *decoding* out — decoding stays with consumers,
+# who must hand this crate a pre-decoded `Handle::from_rgba` anyway (the
+# iced_wgpu synchronous-cache workaround saola-lockscreen documents in
+# `wallpaper.rs`). None of these pulls in a renderer backend — that choice
+# still belongs to consumers.
+iced = { version = "0.14", default-features = false, features = ["wayland", "thread-pool", "svg", "canvas", "advanced", "image-without-codecs"] }

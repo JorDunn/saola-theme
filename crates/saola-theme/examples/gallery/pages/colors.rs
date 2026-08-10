@@ -201,10 +201,12 @@ fn role_steps_section(t: &Theme, surface: Surface) -> Element<'static, Message> 
     }
 }
 
-/// The 8 wallpaper scrims — all ink-tinted, varying only in how much of the
-/// wallpaper they let through. Shown as flat swatches (the gallery has no
-/// live wallpaper to composite them onto); the hex alpha value is the
-/// informative part.
+/// The nine *flat* wallpaper scrims — all ink-tinted, varying only in how
+/// much of the wallpaper they let through. Shown as flat swatches (the
+/// gallery has no live wallpaper to composite them onto); the hex alpha
+/// value is the informative part. The tenth scrim, `lock_rest`, is a
+/// three-stop gradient rather than one color, so it has no single swatch —
+/// the Widgets page's Scrims section paints it for real.
 fn scrims_section(t: &Theme) -> Element<'static, Message> {
     let s = t.scrim;
     let entries = [
@@ -216,8 +218,9 @@ fn scrims_section(t: &Theme) -> Element<'static, Message> {
         ("capture", s.capture),
         ("modal", s.modal),
         ("translucent_panel", s.translucent_panel),
+        ("canvas", s.canvas),
     ];
-    swatch_grid(t, &entries, t.on_ink.secondary.into_iced(), 4)
+    swatch_grid(t, &entries, t.on_ink.secondary.into_iced(), 5)
 }
 
 /// The 16 terminal ANSI colors: the 8 `normal` colors, then the 8 `bright`

@@ -21,9 +21,11 @@ use saola_tokens::{Surface, Theme};
 use crate::convert::{ColorExt, ShadowExt};
 
 /// The closed pick-list field.
-pub fn field(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
+pub fn field(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     let radius = t.radii.pill;
     let on = *t.on(s);
+    let ring_width = t.sizes.ring;
+    let hairline = t.sizes.hairline;
     let accent = t.palette.accent.into_iced();
 
     let background = match s {
@@ -48,10 +50,10 @@ pub fn field(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
         };
         let border = match status {
             Status::Active => border(Color::TRANSPARENT, 0.0),
-            Status::Hovered => border(divider, 1.0),
+            Status::Hovered => border(divider, hairline),
             // The menu can only be open while the field is effectively
             // focused, so this doubles as the focus ring.
-            Status::Opened { .. } => border(accent, 2.0),
+            Status::Opened { .. } => border(accent, ring_width),
         };
         Style {
             text_color,
@@ -69,7 +71,7 @@ pub fn field(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
 /// A menu is a popover, not a page surface — it reads as an ivory card on
 /// either surface, the same way [`crate::style::container::card`] stays
 /// paper-based on ink.
-pub fn menu(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> menu::Style {
+pub fn menu(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> menu::Style + Clone {
     let radius = t.radii.selection;
     let on = *t.on(s);
     let accent = t.palette.accent;

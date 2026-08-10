@@ -48,6 +48,11 @@ pub struct FontSizes {
     pub meta: f32,
     pub label: f32,
     pub keycap: f32,
+    /// The date line under the lock-screen clock (saola-lockscreen invented
+    /// 22px locally; the greeter must match it, so it's a token now).
+    pub lock_date: f32,
+    /// Initials rendered inside an avatar circle (lock/greeter user badge).
+    pub avatar_initials: f32,
 }
 
 impl Default for FontSizes {
@@ -65,6 +70,8 @@ impl Default for FontSizes {
             meta: 12.0,
             label: 11.0,
             keycap: 11.0,
+            lock_date: 22.0,
+            avatar_initials: 22.0,
         }
     }
 }
@@ -85,6 +92,10 @@ pub struct Typography {
     /// Hard floor: nothing in the panel may render smaller than this,
     /// regardless of which named size a given label happens to use.
     pub minimum_bar_size: f32,
+    /// Body-text line height as a *ratio* of the font size (not pixels).
+    /// saola-capture's cosmic-text raster path hardcoded 1.25; any consumer
+    /// laying out text outside iced's default should read this instead.
+    pub line_height: f32,
 }
 
 impl Default for Typography {
@@ -96,6 +107,7 @@ impl Default for Typography {
             weight: FontWeights::default(),
             size: FontSizes::default(),
             minimum_bar_size: 13.0,
+            line_height: 1.25,
         }
     }
 }
@@ -190,9 +202,6 @@ pub struct Sizes {
     /// Standard width of an app window's navigation sidebar (e.g. the file
     /// manager's places sidebar).
     pub window_sidebar: f32,
-    /// Height of the compact media pill *inside* the 48px ledger bar
-    /// (smaller than `panel_pill`, which is a free-standing islands pill).
-    pub panel_pill_media: f32,
     /// Height of the compact clock pill inside the ledger bar.
     pub panel_pill_clock: f32,
     /// Vertical inset of the floating ledger bar from the screen edge
@@ -205,9 +214,60 @@ pub struct Sizes {
     /// Gap between an icon and its value inside one status readout
     /// (tighter than `pill_gap`, which is the icon↔label gap in a pill).
     pub bar_icon_gap: f32,
-    /// Maximum width of the media pill's title text before it truncates
-    /// (`pill_max_width` caps the whole pill; this caps just the title).
-    pub media_title_max_width: f32,
+    /// The 2 px accent ring — keyboard focus and urgent emphasis. Was
+    /// hardcoded in `style::focus_border`, `container::card_urgent`, the
+    /// panel's tray, and the lockscreen before it was a token.
+    pub ring: f32,
+    /// Segmented-control track inset and inter-segment gap (saola-capture
+    /// ×2, saola-files, and the gallery each carried it as a local 4.0).
+    pub segment_inset: f32,
+    /// The sub-`pill_gap` gap for tightly-related elements (saola-files ×6,
+    /// saola-capture ×2 all used a local 4.0).
+    pub gap_tight: f32,
+    /// Height of a window's footer operations strip (saola-files ×2).
+    pub ops_strip: f32,
+    /// Grid-view tile edge length (saola-files icon grid).
+    pub grid_tile: f32,
+    /// Label band height under a grid tile (saola-files).
+    pub grid_tile_label: f32,
+    /// Gap between grid tiles (saola-files).
+    pub grid_tile_gap: f32,
+    /// Width of a context/popover *menu* (saola-files used 240 and 260;
+    /// `popover_width` = 440 is a panel popover, wrong for menus).
+    pub menu_width: f32,
+    /// Width of a modal dialog (saola-files).
+    pub dialog_width: f32,
+    /// Thickness of a progress bar (saola-files).
+    pub progress_girth: f32,
+    /// Icon tile inside a notification card (style guide §6; saola-capture's
+    /// toast).
+    pub icon_tile: f32,
+    /// Notification card lifetime rule thickness (style guide §6;
+    /// saola-capture's toast).
+    pub life_rule: f32,
+    /// Lock/greeter avatar circle diameter (saola-lockscreen).
+    pub avatar_lock: f32,
+    /// Lock/greeter password field height — the spec says 60–64;
+    /// saola-lockscreen shipped 68, which this corrects.
+    pub field_lock: f32,
+    /// Vertical gap between lock-screen stack elements (avatar, name,
+    /// field) (saola-lockscreen).
+    pub lock_stack_gap: f32,
+    /// Vertical padding around a separator rule inside a popover
+    /// (saola-panel ×2 used `island_gap / 2` = 5).
+    pub popover_separator_gap: f32,
+    /// Inset of a slider/scrollbar handle's travel inside its track
+    /// (saola-panel used `pill_gap / 2`; quick-settings segmented track and
+    /// scrollbar rail gap).
+    pub track_inset: f32,
+    /// Radius of a drag handle dot (saola-capture selection chrome).
+    pub handle_radius: f32,
+    /// Width of the capture selection's size readout pill (saola-capture).
+    pub readout_width: f32,
+    /// Marching-ants selection outline: dash fill length (saola-capture).
+    pub selection_dash_fill: f32,
+    /// Marching-ants selection outline: gap between dashes (saola-capture).
+    pub selection_dash_gap: f32,
 }
 
 impl Default for Sizes {
@@ -247,13 +307,32 @@ impl Default for Sizes {
             window_border: 2.0,
             window_header: 46.0,
             window_sidebar: 200.0,
-            panel_pill_media: 30.0,
             panel_pill_clock: 32.0,
             panel_margin_ledger_top: 18.0,
             bar_element_gap: 14.0,
             bar_cluster_gap: 15.0,
             bar_icon_gap: 7.0,
-            media_title_max_width: 190.0,
+            ring: 2.0,
+            segment_inset: 4.0,
+            gap_tight: 4.0,
+            ops_strip: 56.0,
+            grid_tile: 96.0,
+            grid_tile_label: 34.0,
+            grid_tile_gap: 12.0,
+            menu_width: 250.0,
+            dialog_width: 380.0,
+            progress_girth: 6.0,
+            icon_tile: 36.0,
+            life_rule: 3.0,
+            avatar_lock: 88.0,
+            field_lock: 62.0,
+            lock_stack_gap: 20.0,
+            popover_separator_gap: 5.0,
+            track_inset: 4.0,
+            handle_radius: 5.0,
+            readout_width: 136.0,
+            selection_dash_fill: 6.0,
+            selection_dash_gap: 4.0,
         }
     }
 }
@@ -362,6 +441,16 @@ pub struct Motion {
     /// must never vanish, or the readout would look like it is blinking out
     /// of existence rather than idling.
     pub breathe_min_opacity: f32,
+    /// The capture shutter flash, in milliseconds (saola-capture borrowed
+    /// `hover` = 140 for it before this existed).
+    pub flash: u32,
+    /// How long a marquee (scrolling overflow text, e.g. the panel's media
+    /// title) dwells at each end before scrolling again, in milliseconds
+    /// (style guide §5; was a saola-panel constant).
+    pub marquee_dwell: u32,
+    /// Marquee scroll speed in logical px/second (style guide §5; was a
+    /// saola-panel constant). `f32` because it's a rate, not a duration.
+    pub marquee_speed: f32,
 }
 
 impl Default for Motion {
@@ -377,6 +466,42 @@ impl Default for Motion {
             toast_max_stack: 3,
             breathe: 2400,
             breathe_min_opacity: 0.45,
+            flash: 150,
+            marquee_dwell: 2000,
+            marquee_speed: 24.0,
+        }
+    }
+}
+
+/// Control-padding pairs as `[vertical, horizontal]` logical pixels — the
+/// recurring interior paddings of Saola's pill-shaped controls. Sourced
+/// from saola-files' five undocumented recurring pairs; every consumer
+/// should read these instead of re-inventing per-control constants.
+///
+/// The `[f32; 2]` order matches iced's `Padding::from([v, h])`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Paddings {
+    /// A standard text-bearing pill button.
+    pub pill_button: [f32; 2],
+    /// An icon-only pill button.
+    pub icon_button: [f32; 2],
+    /// A control inside a toolbar/ops strip.
+    pub strip: [f32; 2],
+    /// A breadcrumb segment.
+    pub breadcrumb: [f32; 2],
+    /// A dialog's action button (larger hit target than `pill_button`).
+    pub dialog_button: [f32; 2],
+}
+
+impl Default for Paddings {
+    fn default() -> Self {
+        Paddings {
+            pill_button: [6.0, 14.0],
+            icon_button: [6.0, 12.0],
+            strip: [6.0, 10.0],
+            breadcrumb: [4.0, 10.0],
+            dialog_button: [10.0, 16.0],
         }
     }
 }

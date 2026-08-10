@@ -14,7 +14,7 @@ use saola_tokens::{Surface, Theme};
 
 use crate::convert::ColorExt;
 
-pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style {
+pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     let track = t.on(s).track.into_iced();
     let accent = t.palette.accent;
     // The filled portion of the rail steps through the on-ink (ivory) fills

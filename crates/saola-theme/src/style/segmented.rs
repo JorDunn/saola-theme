@@ -25,7 +25,7 @@ use crate::convert::ColorExt;
 /// The track a row of segments sits inside — the `track` role fill at pill
 /// radius. Ink text (inherited as the default for any bare content, though
 /// each segment sets its own via [`segment`]).
-pub fn track(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> container::Style {
+pub fn track(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> container::Style + Clone {
     let radius = t.radii.pill;
     let on = *t.on(s);
     move |_| container::Style {
@@ -49,7 +49,7 @@ pub fn segment(
     t: &Theme,
     s: Surface,
     is_selected: bool,
-) -> impl Fn(&iced::Theme, button::Status) -> button::Style {
+) -> impl Fn(&iced::Theme, button::Status) -> button::Style + Clone {
     let radius = t.radii.pill;
     let on = *t.on(s);
     let accent = t.palette.accent;
