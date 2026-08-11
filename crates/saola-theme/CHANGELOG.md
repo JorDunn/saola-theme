@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.9.0...saola-theme-v0.10.0) - 2026-08-11
+
+### Changed
+
+- *(saola-theme)* [**breaking**] width-aware truncate (UAX #11 East Asian Width)
+
 ## [0.9.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.8.0...saola-theme-v0.9.0) - 2026-08-11
 
 ### Added
