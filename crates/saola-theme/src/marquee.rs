@@ -50,10 +50,12 @@
 //! quantized travel reads as stepping) — so it stays a consumer constant and
 //! is deliberately not minted here.
 //!
-//! **The overflow gate.** Whether to marquee at all (vs. truncate), and the
-//! character budget that defines "overflows", are consumer knobs
-//! (`max-chars` in the panel's config); this module just takes the budget as
-//! [`marquee`]'s `max_chars`.
+//! **The overflow gate.** Whether to marquee at all, and the character
+//! budget that defines "overflows", are consumer knobs (`max-chars` in the
+//! panel's config); this module just takes the budget as [`marquee`]'s
+//! `max_chars`. The other side of that gate is now shared too:
+//! [`crate::overflow::truncate`] is §5's *default* mode — cut at the budget,
+//! one `…`, no motion — and this widget is the opt-in second one.
 
 use std::time::Duration;
 
