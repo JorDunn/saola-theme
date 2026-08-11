@@ -29,7 +29,9 @@ use saola_theme::indeterminate::indeterminate_rule;
 use saola_theme::marquee::marquee;
 use saola_theme::style::container::{DashState, ScrimKind, SessionStatus};
 use saola_theme::widget::Emphasis;
-use saola_theme::{avatar, convert, icon, motion, style, widget, ColorExt, Icon, Surface, Theme};
+use saola_theme::{
+    avatar, chrome, convert, icon, motion, style, widget, ColorExt, Icon, Surface, Theme,
+};
 
 /// The options shown in the Widgets page's pick list demo.
 const PICK_LIST_OPTIONS: &[&str] = &["Ink", "Paper", "Terracotta"];
@@ -288,6 +290,11 @@ impl Gallery {
                 text("Containers").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.containers_row(primary)),
                 self.labeled_surface_row(secondary, self.containers_row(secondary)),
+                // The T1 application-window chrome. Ink-only as a section
+                // (see `window_chrome_row`): a window floats on the shell,
+                // and both surfaces are already inside the one specimen.
+                text("Window chrome").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.window_chrome_row()),
                 text("Rows, tiles & menus").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.rows_column(primary)),
                 self.labeled_surface_row(secondary, self.rows_column(secondary)),
@@ -539,8 +546,8 @@ impl Gallery {
     }
 
     /// A "On ink" / "On paper" caption above `content`, wrapping `content`
-    /// in a `paper_window` card when `surface` is `Paper` (matching how the
-    /// rest of the app only ever shows paper as a window floating on the
+    /// in a `container::window` card when `surface` is `Paper` (matching how
+    /// the rest of the app only ever shows paper as a window floating on the
     /// ink shell, never as the shell itself).
     fn labeled_surface_row<'a>(
         &'a self,
@@ -560,7 +567,7 @@ impl Gallery {
             Surface::Paper => column![
                 label,
                 container(content)
-                    .style(style::container::paper_window(t))
+                    .style(style::container::window(t, Surface::Paper))
                     .padding(24)
                     .width(Fill),
             ]
@@ -986,6 +993,55 @@ impl Gallery {
             .spacing(16)
             .align_y(iced::Center)
             .into()
+    }
+
+    /// The application-window chrome (`chrome::window_frame` +
+    /// `chrome::window_header` over `style::container::window`) at both
+    /// surfaces, side by side: the ivory window the style guide ships as the
+    /// default, and the ink one it offers as a user preference.
+    ///
+    /// Ink-only as a *section* — a window always floats on the shell, so
+    /// showing these on a paper card would be a window inside a window. Both
+    /// surfaces already appear inside the one specimen, which is the point:
+    /// against the ink shell you can see that the ink window's
+    /// `on_ink.divider` border still draws an edge, where a `palette.ink`
+    /// border would vanish.
+    fn window_chrome_row(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+
+        // Both frames are fixed-size: `window_frame` fills whatever it is
+        // given, so a specimen needs a box to fill. 320x180 is enough to
+        // show the 46 px header, the 24 px corners, and a line of body text.
+        let frame = |s: Surface, title: &'static str, body: &'static str| {
+            let header = chrome::window_header(
+                t,
+                s,
+                title,
+                Message::DemoPressed,
+                Message::DemoPressed,
+                // `None`: a fixed-size specimen has nothing to maximise into,
+                // the same call saola-capture makes for its fixed window.
+                None,
+            );
+            let content = container(
+                text(body)
+                    .size(t.typography.size.secondary)
+                    .color(convert::ColorExt::into_iced(t.on(s).secondary)),
+            )
+            .padding([0, 16]);
+
+            container(chrome::window_frame(t, s, header, content.into()))
+                .width(320)
+                .height(180)
+        };
+
+        row![
+            frame(Surface::Paper, "Paper window", "Ink text on paper."),
+            frame(Surface::Ink, "Ink window", "Ivory text on ink."),
+        ]
+        .spacing(16)
+        .align_y(iced::Center)
+        .into()
     }
 
     /// The Stage 12 modal dialog kit's full assembly recipe, as one static
@@ -1742,7 +1798,7 @@ impl Gallery {
         }
 
         container(column(rows).spacing(12))
-            .style(style::container::paper_window(t))
+            .style(style::container::window(t, Surface::Paper))
             .padding(20)
             .into()
     }

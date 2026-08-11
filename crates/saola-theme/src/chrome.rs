@@ -1,8 +1,9 @@
 //! Shared window chrome for ordinary (non-layer-shell) Saola toplevels.
 //!
 //! Saola runs on niri, which draws **no server-side decorations**, so every
-//! ordinary window paints its own chrome: the rounded ivory
-//! [`style::container::paper_window`] frame, the
+//! ordinary window paints its own chrome: the rounded
+//! [`style::container::window`] frame (ivory by default, ink when the user
+//! prefers it — style guide §2), the
 //! [`saola_tokens::Sizes::window_header`] title bar (title, close pill), and
 //! the invisible interactive move/resize regions. This module is the shared
 //! home of what its consumers grew independently — saola-files'
@@ -33,7 +34,7 @@
 //!
 //! The window itself is created with `decorations: false, transparent:
 //! true`; the compositor-visible shape is whatever we paint, which is
-//! `paper_window`'s rounded rectangle. The corners outside that radius stay
+//! the frame's rounded rectangle. The corners outside that radius stay
 //! genuinely transparent only if the *application-level* clear color is
 //! transparent too — see [`transparent_clear`] for that oft-rediscovered
 //! pairing.
@@ -277,6 +278,11 @@ pub fn with_resize_grips<'a, M: Clone + 'a>(
 /// The `sizes.window_header` (46 px) title bar: a drag surface with the
 /// window title on the left and the close pill on the right.
 ///
+/// `s` is the surface of the window this bar sits on, and must match the one
+/// given to [`window_frame`] — the title, the close glyph, and the pill's
+/// hover fill all resolve through `Theme::on(s)`, so passing the wrong one
+/// paints ink chrome on an ink window.
+///
 /// - Pressing anywhere on the bar's background sends `on_drag` (the
 ///   consumer starts an interactive move — `window::drag`).
 /// - Double-clicking sends `on_maximize` when given (`Some` for a resizable
@@ -296,13 +302,14 @@ pub fn with_resize_grips<'a, M: Clone + 'a>(
 /// `on_close`.)
 ///
 /// Where the consumers disagreed, this takes saola-files' shipped choices:
-/// title in `on_paper.secondary` (capture used `primary`; secondary reads
-/// as chrome, not content), the close pill as an `Icon::X` at
+/// title in the surface's `secondary` role (capture used `primary`;
+/// secondary reads as chrome, not content), the close pill as an `Icon::X` at
 /// `sizes.icon_row` in a [`style::button::bare`] pill (capture's text
 /// "Close" label predates the shared icon set), and the [`HEADER_INSET`]
 /// horizontal inset (see that constant).
 pub fn window_header<'a, M: Clone + 'a>(
     t: &Theme,
+    s: Surface,
     title: &'a str,
     on_close: M,
     on_drag: M,
@@ -311,9 +318,9 @@ pub fn window_header<'a, M: Clone + 'a>(
     let close = button(icon::icon(
         Icon::X,
         t.sizes.icon_row,
-        t.on_paper.primary.into_iced(),
+        t.on(s).primary.into_iced(),
     ))
-    .style(style::button::bare(t, Surface::Paper))
+    .style(style::button::bare(t, s))
     // 6 px above/below the 16 px glyph makes the 28 px pill saola-files
     // shipped; 12 px keeps the pill's hit zone comfortably wider than the
     // glyph.
@@ -324,7 +331,7 @@ pub fn window_header<'a, M: Clone + 'a>(
         text(title)
             .font(convert::ui_font(t))
             .size(t.typography.size.body)
-            .color(t.on_paper.secondary.into_iced()),
+            .color(t.on(s).secondary.into_iced()),
         Space::new().width(Fill),
         close,
     ]
@@ -345,9 +352,14 @@ pub fn window_header<'a, M: Clone + 'a>(
     }
 }
 
-/// The window frame: the [`style::container::paper_window`] surface (24 px
-/// radius, 2 px ink border, window shadow) wrapping `header` above
-/// `content`, filling the window.
+/// The window frame: the [`style::container::window`] surface (24 px radius,
+/// 2 px border, window shadow) wrapping `header` above `content`, filling
+/// the window.
+///
+/// `s` picks the window's ground — `Surface::Paper` for the ivory window the
+/// style guide ships as the default, `Surface::Ink` for the dark one it
+/// offers as a user preference. Pass the same `s` to [`window_header`] so
+/// the title bar's text and close pill match the frame under them.
 ///
 /// `header` is normally [`window_header`]; it is a parameter rather than
 /// built in place so a consumer can extend the bar (extra pills next to
@@ -355,11 +367,12 @@ pub fn window_header<'a, M: Clone + 'a>(
 /// [`with_resize_grips`] over the result for a resizable window.
 pub fn window_frame<'a, M: 'a>(
     t: &Theme,
+    s: Surface,
     header: Element<'a, M>,
     content: Element<'a, M>,
 ) -> Element<'a, M> {
     container(column![header, content].width(Fill).height(Fill))
-        .style(style::container::paper_window(t))
+        .style(style::container::window(t, s))
         .width(Fill)
         .height(Fill)
         .into()
@@ -382,7 +395,7 @@ pub fn window_frame<'a, M: 'a>(
 /// `decorations: false, transparent: true` on the window is **not enough**.
 /// Without a transparent clear color, iced clears the whole surface to
 /// [`crate::to_iced_theme`]'s `background` (`palette.ink`) before drawing
-/// anything, so the corners outside `paper_window`'s 24 px radius render as
+/// anything, so the corners outside the frame's 24 px radius render as
 /// square ink wedges — and any translucent surface composites against
 /// opaque ink instead of true Wayland transparency. saola-capture caught
 /// the layer-shell version of this live, by `grim`-sampling a pixel a full

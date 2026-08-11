@@ -29,29 +29,60 @@ pub fn ink_surface(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
     move |_| surface(ink, text, 0.0)
 }
 
-/// A light application window: solid paper at the window radius, with the
-/// 2 px ink window border and the window shadow. Ink text.
-pub fn paper_window(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
-    let paper = t.palette.paper.into_iced();
-    let text = t.on_paper.primary.into_iced();
-    let ink = t.palette.ink.into_iced();
+/// A light or dark application window: a solid surface at the window
+/// radius, with the 2 px window border and the window shadow.
+///
+/// On paper it is the ivory window the style guide ships as the default —
+/// paper fill, ink text, a solid ink border. On ink it is the same shape in
+/// the shell's own colors (ink fill, ivory text), which the style guide §2
+/// offers as a user preference.
+///
+/// The ink arm's border is `on_ink.divider`, not `palette.ink`: an ink
+/// border drawn on an ink fill is invisible, so the edge has to come from
+/// somewhere. The divider role — ivory at ~12% — is the palette's existing
+/// "hairline that separates without introducing a color", which is exactly
+/// this job, and it keeps the three-color rule intact. (Same reasoning as
+/// niri's inactive window border.)
+pub fn window(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
+    // `Surface` is `Copy`, so the surface-dependent colors are resolved
+    // here, once, and the closure below captures three plain locals. Reading
+    // `t.*` inside a `move` closure instead would be an E0700 lifetime
+    // capture error — the same hoisting every helper in this file does.
+    let (background, text, border_color) = match s {
+        Surface::Paper => (
+            t.palette.paper.into_iced(),
+            t.on_paper.primary.into_iced(),
+            t.palette.ink.into_iced(),
+        ),
+        Surface::Ink => (
+            t.palette.ink.into_iced(),
+            t.on_ink.primary.into_iced(),
+            t.on_ink.divider.into_iced(),
+        ),
+    };
     let radius = t.radii.window;
     let border_width = t.sizes.window_border;
     let shadow = t.shadows.window.into_iced();
     move |_| Style {
         border: Border {
-            color: ink,
+            color: border_color,
             width: border_width,
             radius: radius.into(),
         },
         shadow,
-        ..surface(paper, text, radius)
+        ..surface(background, text, radius)
     }
 }
 
 /// A card at the card radius. On ink it is a solid ivory card (ink text,
 /// popover shadow — a notification card floating on the shell); on paper it
 /// is a subtle ink-fill inset of the window (no shadow).
+///
+/// Read the `Surface::Ink` arm as "an ivory card floating *on* the shell",
+/// not "a card inside an ink window". A recessed panel inside an ink
+/// [`window`] is [`inset`] or [`tile`] — those pick up the surface's own
+/// `fill_subtle` and read as a recess, where an ivory card on ink would
+/// read as a separate floating layer.
 pub fn card(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let radius = t.radii.card;
     let text = t.on_paper.primary.into_iced();

@@ -146,7 +146,7 @@ fn identity_section(t: &Theme) -> Element<'static, Message> {
 /// with alpha" actually looks like.
 ///
 /// The two match arms are intentionally not merged behind a boxed closure:
-/// `style::container::ink_surface` and `style::container::paper_window`
+/// `style::container::ink_surface` and `style::container::window`
 /// return two *different* concrete (if opaque) closure types, so a shared
 /// variable would need `Box<dyn Fn(..)>` — more machinery than a straight
 /// if/match needs here.
@@ -193,7 +193,7 @@ fn role_steps_section(t: &Theme, surface: Surface) -> Element<'static, Message> 
                 ]
                 .spacing(10),
             )
-            .style(style::container::paper_window(t))
+            .style(style::container::window(t, Surface::Paper))
             .padding(20)
             .width(Fill)
             .into()

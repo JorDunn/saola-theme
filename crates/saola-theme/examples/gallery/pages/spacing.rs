@@ -3,7 +3,7 @@
 //! Like the Typography page, radii and sizes don't have a "surface"-specific
 //! *shape* — a 24px window radius is a 24px window radius on either
 //! surface — so `surface` here again controls where the whole page is
-//! drawn (directly on the ink shell, or inside a `paper_window` card),
+//! drawn (directly on the ink shell, or inside a `container::window` card),
 //! which is what makes toggling it visibly re-render this page too.
 
 use iced::widget::{column, container, row, scrollable, text, Space};
@@ -48,7 +48,7 @@ pub fn view(t: &Theme, surface: Surface) -> Element<'static, Message> {
     match surface {
         Surface::Ink => scrolled.into(),
         Surface::Paper => container(scrolled)
-            .style(style::container::paper_window(t))
+            .style(style::container::window(t, Surface::Paper))
             .padding(24)
             .width(Fill)
             .height(Fill)

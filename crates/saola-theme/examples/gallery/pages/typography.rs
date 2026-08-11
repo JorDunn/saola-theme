@@ -5,7 +5,7 @@
 //! compare role steps), a font doesn't have a "surface"-specific look — so
 //! this page instead uses `surface` as *where the whole page is drawn*.
 //! On ink it sits directly on the shell; on paper it renders inside a real
-//! `paper_window` card. That's a second, independent way the surface toggle
+//! `container::window` card. That's a second, independent way the surface toggle
 //! proves itself at runtime: instead of reordering sections like the Colors
 //! page, this page's entire background and text color flip.
 
@@ -47,7 +47,7 @@ pub fn view(t: &Theme, surface: Surface) -> Element<'static, Message> {
     match surface {
         Surface::Ink => scrolled.into(),
         Surface::Paper => container(scrolled)
-            .style(style::container::paper_window(t))
+            .style(style::container::window(t, Surface::Paper))
             .padding(24)
             .width(Fill)
             .height(Fill)
