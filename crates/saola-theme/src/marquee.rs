@@ -55,7 +55,13 @@
 //! panel's config); this module just takes the budget as [`marquee`]'s
 //! `max_chars`. The other side of that gate is now shared too:
 //! [`crate::overflow::truncate`] is §5's *default* mode — cut at the budget,
-//! one `…`, no motion — and this widget is the opt-in second one.
+//! one `…`, no motion — and this widget is the opt-in second one. Note the
+//! two budgets are not quite the same unit: `truncate` charges a wide (CJK,
+//! emoji) character two, per UAX #11, while this widget's window is a
+//! character count scaled by one average advance (`window_width`, below).
+//! Both are approximations of the same pixel width, and the marquee's is the
+//! looser one — it is bounded by the measured text anyway, so an
+//! under-estimate costs a slightly narrow window, never an overflowing one.
 
 use std::time::Duration;
 

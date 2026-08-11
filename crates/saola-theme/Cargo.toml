@@ -7,6 +7,22 @@ license.workspace = true
 [dependencies]
 saola-tokens = { path = "../saola-tokens", version = "0.6.0" }
 iced = { workspace = true }
+# unicode-width (2026-08-10): `overflow::truncate`'s budget is width units,
+# not `char`s — a full-width CJK glyph is ~1.0 em against ~0.55 em for
+# average Latin, so a character cap renders ~2x too wide on CJK (measured in
+# saola-files: ~145 px of text in a 96 px grid tile). This crate is the
+# unicode-rs org's UAX #11 East Asian Width table: `no_std`, zero transitive
+# dependencies, and already in the lock file as a transitive dependency of
+# iced's text stack, so it adds no new build.
+# Alternatives considered: (a) a hand-rolled EAW table — the ranges are
+# large and move with every Unicode release, i.e. standing maintenance debt
+# for data someone else already maintains; (b) measuring with the renderer,
+# which is exact but needs a custom `Widget` (iced cannot measure text from
+# `view()`) — `marquee`'s whole machinery, for what the style guide
+# deliberately specs as an approximate, human-reasonable knob.
+# Deliberately NOT in saola-tokens: that crate's dependency tree is
+# constrained to serde/toml/thiserror (CLAUDE.md; `cargo tree` is the proof).
+unicode-width = "0.2"
 
 [dev-dependencies]
 iced = { version = "0.14", features = ["debug"] }

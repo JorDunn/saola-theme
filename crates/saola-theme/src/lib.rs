@@ -37,8 +37,8 @@
 //! grips, the transparent clear color) in [`chrome`], the §7 avatar
 //! composite (photo resolution, initials fallback, the disc view) in
 //! [`avatar`], the §5 ping-pong text marquee in [`marquee`], the §5/§7
-//! default text-overflow mode (the character cap with a single `…`) in
-//! [`overflow`], and the §7 indeterminate progress rule (a `canvas`-drawn
+//! default text-overflow mode (the East-Asian-Width-aware cap with a single
+//! `…`) in [`overflow`], and the §7 indeterminate progress rule (a `canvas`-drawn
 //! ping-pong sweep, the marquee's sibling for a boot/splash countdown) in
 //! [`indeterminate`].
 
