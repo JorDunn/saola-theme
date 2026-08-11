@@ -9,6 +9,12 @@
 //! file manager's grid label — reaches for this one unless its consumer asked
 //! for motion.
 //!
+//! [`unit_budget`] is the other half of the pair: it turns the pixels a
+//! surface actually has into the width budget [`truncate`] spends, using the
+//! design language's one calibration for that conversion
+//! ([`AVG_ADVANCE_EM`]). It lives here so grid tiles, list rows and every
+//! future §7 surface share a single number instead of each re-deriving one.
+//!
 //! Ported from saola-panel's private `truncate` in
 //! `modules/window_title.rs`, which is where the rule was first written
 //! down; it lives here now because it is the design language's answer, not
@@ -163,6 +169,89 @@ pub fn truncate(s: &str, max_units: usize) -> String {
     capped.push_str(&s[..cut]);
     capped.push(ELLIPSIS);
     capped
+}
+
+/// Advance of one *width unit* of the UI sans, as a fraction of the font
+/// size — which is to say the average advance of a narrow character, since
+/// [`truncate`] charges a narrow character exactly one unit and a UAX #11
+/// Wide/Fullwidth one two. That correspondence is what lets [`unit_budget`]
+/// answer "how much of this label fits" with a single division: a unit *is*
+/// an average narrow advance, so pixels divided by it are units.
+///
+/// An approximation, deliberately: the face is proportional, so an `m` and
+/// an `l` are nowhere near this same width — but the style guide (§7) asks
+/// for a limit "measured in characters, not pixels … approximate under a
+/// proportional face", and a consumer's `view()` cannot measure a string
+/// before layout runs anyway. 0.55 em is the usual ballpark for a humanist
+/// sans at mixed-case text, and it has been checked on screen against the
+/// shipped tokens: e.g. a 96 px box at 12.5 px secondary text yields 13
+/// units, and a 13-unit Latin label paints roughly 77 px there — close to
+/// the edge with margin left over for wider-than-average strings, which is
+/// the calibration this constant is for.
+///
+/// **What this average does and does not cover.** The *script*-scale error
+/// is not this constant's problem: a full-width CJK glyph is nearer 1.0 em
+/// than 0.55, and [`truncate`] charging it two units is what keeps a
+/// Japanese label inside the same box a Latin one gets, instead of spilling
+/// to roughly twice the intended width. What remains is the glyph-scale
+/// error within Latin itself — `mmmmmmmmmmmmm` and `lllllllllllll` are both
+/// thirteen units and nowhere near the same pixel width. That residue is
+/// small, bounded, and absorbed at the call site by two things a §7 surface
+/// already has: `text::Wrapping::None` (a wide-for-its-count label is
+/// clipped to one line, never wrapped into the next row's height), and the
+/// gap tokens between neighbouring labels, which give an over-average string
+/// somewhere to lean without touching its neighbour. Removing even that
+/// residue would mean measuring with the renderer, which §7 explicitly
+/// declines to ask consumers to do.
+const AVG_ADVANCE_EM: f32 = 0.55;
+
+/// How many **width units** of text fit in `available_px` at `font_px`, the
+/// canonical pixel → budget conversion for §7 labels.
+///
+/// A unit is one average narrow advance ([`AVG_ADVANCE_EM`]): one per
+/// narrow character, two per UAX #11 Wide/Fullwidth one. That is exactly the
+/// currency [`truncate`] spends, so the two pair directly — derive the
+/// budget from tokens here, hand it to `truncate` there, and a token change
+/// carries the label with it instead of stranding a hardcoded count.
+///
+/// The `.max(4)` is a floor, not a tuning knob: a degenerate pairing (a tiny
+/// box, a huge font) would otherwise compute a budget of 0 or 1, and
+/// [`truncate`] spends the last unit of its budget on the `…` itself — so
+/// every label in the surface would collapse to a lone ellipsis, which reads
+/// as a bug rather than as elision. Four leaves at least three narrow
+/// characters, or one wide one, visible.
+///
+/// No input can take a consumer down (Saola's no-panic rule): `as usize` on
+/// an `f32` saturates at 0 for negatives and at `usize::MAX` for huge values
+/// in Rust 2021+ — no UB, no panic — and a non-positive advance (`font_px`
+/// of zero or less) returns the floor before dividing. A **negative**
+/// `available_px` saturates through that same path to the floor of 4: a grid
+/// tile can never be negative, but a list view's flexible name column is
+/// whatever is left after its fixed size and date columns, and squeezing the
+/// window below their combined width makes that leftover negative.
+///
+/// Pure function of two numbers, which is what makes it testable without a
+/// `Theme` or a renderer.
+///
+/// ```
+/// use saola_theme::overflow::{truncate, unit_budget};
+///
+/// // A 96 px grid tile at 12.5 px secondary text: 13 units of label.
+/// let budget = unit_budget(96.0, 12.5);
+/// assert_eq!(budget, 13);
+/// assert_eq!(truncate("annual-report-final.pdf", budget), "annual-repor…");
+/// // Nonsense in, floor out — never a budget that elides everything.
+/// assert_eq!(unit_budget(-200.0, 12.5), 4);
+/// ```
+pub fn unit_budget(available_px: f32, font_px: f32) -> usize {
+    let advance = font_px * AVG_ADVANCE_EM;
+    if advance <= 0.0 {
+        return 4;
+    }
+    // `as usize` on an f32 saturates at 0 for negatives and at usize::MAX
+    // for huge values in Rust 2021+ — no UB, no panic, so a nonsense
+    // `available_px` (including a negative one) can't take a consumer down.
+    ((available_px / advance).floor() as usize).max(4)
 }
 
 #[cfg(test)]
@@ -341,5 +430,66 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn the_grid_tile_calibration_is_pinned() {
+        // 96 px of tile at 12.5 px secondary text: 96 / (12.5 × 0.55) =
+        // 13.96, floored to 13. This is the calibration saola-files' grid
+        // pins in its own tests too, so changing `AVG_ADVANCE_EM` has to
+        // fail here first — before it silently reflows a consumer's labels.
+        assert_eq!(unit_budget(96.0, 12.5), 13);
+    }
+
+    #[test]
+    fn a_list_row_calibration_is_pinned() {
+        // The other shape §7 has to serve: a wide flexible name column at
+        // body text. 13.5 × 0.55 = 7.425 px per unit, and 574 / 7.425 =
+        // 77.3, floored to 77.
+        assert_eq!(unit_budget(574.0, 13.5), 77);
+    }
+
+    #[test]
+    fn a_degenerate_budget_falls_back_to_the_floor() {
+        // Nothing here is reachable from sane tokens; all of it is reachable
+        // from a resized window or a mistyped config, and none of it may
+        // panic or collapse every label to a lone ellipsis.
+        assert_eq!(unit_budget(0.0, 12.5), 4);
+        assert_eq!(unit_budget(4.0, 12.5), 4);
+        // A flexible column narrower than the fixed columns beside it: the
+        // arithmetic goes negative, and `as usize` saturates at 0 before the
+        // floor lifts it to 4.
+        assert_eq!(unit_budget(-200.0, 12.5), 4);
+        // A font size of zero (or less) never divides — the guard returns
+        // the floor first.
+        assert_eq!(unit_budget(96.0, 0.0), 4);
+        assert_eq!(unit_budget(96.0, -12.5), 4);
+        // And the floor really does leave something readable: three narrow
+        // characters plus the ellipsis, or one wide one.
+        assert_eq!(truncate("abcdefgh", unit_budget(0.0, 12.5)), "abc…");
+        assert_eq!(truncate("設定ウィンドウ", unit_budget(0.0, 12.5)), "設…");
+    }
+
+    #[test]
+    fn a_wider_box_never_yields_fewer_units() {
+        // Monotonic in the pixels available, which is the property a
+        // consumer relies on when a column grows during a resize.
+        let widths = [-50.0f32, 0.0, 10.0, 47.0, 96.0, 200.0, 574.0, 1600.0];
+        let mut previous = 0usize;
+        for w in widths {
+            let budget = unit_budget(w, 12.5);
+            assert!(budget >= previous, "{w} px gave {budget} after {previous}");
+            previous = budget;
+        }
+    }
+
+    #[test]
+    fn an_absurd_width_does_not_panic() {
+        // `as usize` saturates rather than wrapping or trapping, so these
+        // just produce enormous budgets — and an enormous budget means
+        // `truncate` returns the string untouched.
+        assert!(unit_budget(f32::MAX, 12.5) > 0);
+        assert_eq!(unit_budget(f32::INFINITY, 12.5), usize::MAX);
+        assert_eq!(truncate("nvim", unit_budget(f32::MAX, 12.5)), "nvim");
     }
 }
