@@ -363,10 +363,37 @@ impl Default for Scrim {
 /// that varies in Saola instead of a dark/light theme choice — every style
 /// helper takes a `&Theme` *and* a `Surface` so it knows which `OnSurface`
 /// role set to read.
+///
+/// It says only which *background* the content sits on, not what kind of
+/// thing that background belongs to — an ink ground is an ink ground whether
+/// it is the panel or an ink app window. The chrome-versus-window question is
+/// [`Chrome`]'s.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Surface {
-    /// Rendering onto an ink background (shell chrome: panel, launcher, lock).
+    /// Rendering onto an ink background — the dark ground (`palette.ink`),
+    /// reading the `on_ink` (ivory) role ladder.
     Ink,
-    /// Rendering onto a paper background (light window content, cards).
+    /// Rendering onto a paper background — the light ground
+    /// (`palette.paper`), reading the `on_paper` (ink) role ladder.
     Paper,
+}
+
+/// Where a control lives: shell chrome, or inside an app window.
+///
+/// [`Surface`] picks which `OnSurface` ladder you read; `Chrome` says whether
+/// the control sits in **shell chrome** (panel, popovers, launcher — where a
+/// control at rest is a full-opacity ivory pill, the style guide §6 recipe)
+/// or **inside an app window** (where rest recedes into the translucent fill
+/// steps instead, so it never out-shouts the one terracotta control beside
+/// it).
+///
+/// Only the ink rest recipes differ between the two: on paper a control at
+/// rest is already a translucent ink fill, so `Shell` and `Window` are
+/// identical there.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Chrome {
+    /// Shell chrome — panel, popovers, launcher, lock, notification centre.
+    Shell,
+    /// Inside an application window (its own frame, header, and content).
+    Window,
 }

@@ -40,7 +40,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 pub use color::{Color, ColorParseError};
-pub use palette::{GradientStop, OnSurface, Palette, Scrim, ScrimGradient, Surface};
+pub use palette::{Chrome, GradientStop, OnSurface, Palette, Scrim, ScrimGradient, Surface};
 pub use tokens::{
     AnsiColors, FontSizes, FontWeights, Motion, Paddings, Radii, Shadow, Shadows, Sizes, Terminal,
     Typography,

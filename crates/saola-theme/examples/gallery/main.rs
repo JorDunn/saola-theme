@@ -30,7 +30,7 @@ use saola_theme::marquee::marquee;
 use saola_theme::style::container::{DashState, ScrimKind, SessionStatus};
 use saola_theme::widget::Emphasis;
 use saola_theme::{
-    avatar, chrome, convert, icon, motion, style, widget, ColorExt, Icon, Surface, Theme,
+    avatar, chrome, convert, icon, motion, style, widget, Chrome, ColorExt, Icon, Surface, Theme,
 };
 
 /// The options shown in the Widgets page's pick list demo.
@@ -576,7 +576,13 @@ impl Gallery {
         }
     }
 
-    /// One row of every button helper in the given surface context.
+    /// One row of every button helper in the given surface context, then the
+    /// `emphasis` pair in both chrome contexts: `Chrome::Shell` (the shell's
+    /// full-opacity ivory rest pill) above `Chrome::Window` (rest recedes
+    /// into the `on_ink` fill ladder so it can't out-shout the terracotta
+    /// beside it). The window row is the interesting one on ink only — on
+    /// paper a control at rest is already a translucent fill, so the two
+    /// chromes are the same recipe there, which the caption says outright.
     fn button_row(&self, s: Surface) -> Element<'_, Message> {
         let t = &self.theme;
         let size = t.typography.size.body;
@@ -584,7 +590,7 @@ impl Gallery {
 
         let helpers = row![
             button(text("Rest").size(size))
-                .style(style::button::rest(t, s))
+                .style(style::button::rest(t, s, Chrome::Shell))
                 .padding(pad)
                 .on_press(Message::DemoPressed),
             button(text("Active").size(size))
@@ -601,7 +607,7 @@ impl Gallery {
                 .on_press(Message::DemoPressed),
             // No `on_press` ⇒ iced reports `Status::Disabled`.
             button(text("Disabled").size(size))
-                .style(style::button::rest(t, s))
+                .style(style::button::rest(t, s, Chrome::Shell))
                 .padding(pad),
         ]
         .spacing(12);
@@ -609,19 +615,45 @@ impl Gallery {
         // `emphasis`: `rest` or `active` behind one closure type, picked by
         // a `bool` — the helper consumers use for a button that flips
         // between the two states without duplicating the builder chain.
-        let emphasis_row = row![
-            button(text("Emphasis off").size(size))
-                .style(style::button::emphasis(t, s, false))
-                .padding(pad)
-                .on_press(Message::DemoPressed),
-            button(text("Emphasis on").size(size))
-                .style(style::button::emphasis(t, s, true))
-                .padding(pad)
-                .on_press(Message::DemoPressed),
-        ]
-        .spacing(12);
+        // One row per `Chrome`, so shell and window rest read side by side.
+        let emphasis_row = |c: Chrome, label: &'static str| {
+            row![
+                container(
+                    text(label)
+                        .size(t.typography.size.label)
+                        .color(convert::ColorExt::into_iced(t.on(s).tertiary))
+                )
+                .width(150)
+                .align_y(iced::Center),
+                button(text("Rest").size(size))
+                    .style(style::button::rest(t, s, c))
+                    .padding(pad)
+                    .on_press(Message::DemoPressed),
+                button(text("Emphasis off").size(size))
+                    .style(style::button::emphasis(t, s, c, false))
+                    .padding(pad)
+                    .on_press(Message::DemoPressed),
+                button(text("Emphasis on").size(size))
+                    .style(style::button::emphasis(t, s, c, true))
+                    .padding(pad)
+                    .on_press(Message::DemoPressed),
+            ]
+            .spacing(12)
+            .align_y(iced::Center)
+        };
 
-        column![helpers, emphasis_row].spacing(12).into()
+        let window_caption = match s {
+            Surface::Ink => "Chrome::Window — in an ink window",
+            Surface::Paper => "Chrome::Window — same as Shell on paper",
+        };
+
+        column![
+            helpers,
+            emphasis_row(Chrome::Shell, "Chrome::Shell"),
+            emphasis_row(Chrome::Window, window_caption),
+        ]
+        .spacing(12)
+        .into()
     }
 
     /// One column of every Stage 5 style helper (text input, checkbox,
@@ -836,6 +868,7 @@ impl Gallery {
                     .style(style::segmented::segment(
                         t,
                         s,
+                        Chrome::Shell,
                         index == self.segment_selected,
                     ))
                     .padding([8, 16])
@@ -980,7 +1013,7 @@ impl Gallery {
         // doc), so only the trigger button below varies with `s`.
         let tooltip_demo = tooltip(
             button(text("Hover me").size(t.typography.size.body))
-                .style(style::button::rest(t, s))
+                .style(style::button::rest(t, s, Chrome::Shell))
                 .padding([10, 18])
                 .on_press(Message::DemoPressed),
             container(text("A tooltip — ink, radii.tile, popover shadow"))
@@ -1006,12 +1039,18 @@ impl Gallery {
     /// against the ink shell you can see that the ink window's
     /// `on_ink.divider` border still draws an edge, where a `palette.ink`
     /// border would vanish.
+    ///
+    /// Each frame also carries a small `Chrome::Window` control strip, which
+    /// is where that context is meant to be read: compare the ink window's
+    /// "Cancel" pill here against the full-opacity ivory one the Buttons
+    /// section shows in `Chrome::Shell`.
     fn window_chrome_row(&self) -> Element<'_, Message> {
         let t = &self.theme;
 
         // Both frames are fixed-size: `window_frame` fills whatever it is
-        // given, so a specimen needs a box to fill. 320x180 is enough to
-        // show the 46 px header, the 24 px corners, and a line of body text.
+        // given, so a specimen needs a box to fill. 320x210 is enough to
+        // show the 46 px header, the 24 px corners, a line of body text, and
+        // the in-window control strip below it.
         let frame = |s: Surface, title: &'static str, body: &'static str| {
             let header = chrome::window_header(
                 t,
@@ -1023,16 +1062,55 @@ impl Gallery {
                 // the same call saola-capture makes for its fixed window.
                 None,
             );
+            // Window content is `Chrome::Window`: the un-emphasized pill and
+            // the unlit segments recede into the fill ladder instead of
+            // painting a full-opacity ivory pill, so the terracotta control
+            // beside them stays the loudest thing in the window. On paper
+            // this is byte-identical to `Chrome::Shell`; on ink it is the
+            // whole point of the context.
+            let strip = row![
+                widget::pill_button(
+                    t,
+                    s,
+                    Chrome::Window,
+                    "Save",
+                    Some(Message::DemoPressed),
+                    true
+                ),
+                widget::pill_button(
+                    t,
+                    s,
+                    Chrome::Window,
+                    "Cancel",
+                    Some(Message::DemoPressed),
+                    false
+                ),
+                widget::segmented_row_icons(
+                    t,
+                    s,
+                    Chrome::Window,
+                    &[(0usize, Icon::List), (1, Icon::LayoutGrid)],
+                    &self.view_selected,
+                    Message::ViewSelected,
+                ),
+            ]
+            .spacing(8)
+            .align_y(iced::Center);
+
             let content = container(
-                text(body)
-                    .size(t.typography.size.secondary)
-                    .color(convert::ColorExt::into_iced(t.on(s).secondary)),
+                column![
+                    text(body)
+                        .size(t.typography.size.secondary)
+                        .color(convert::ColorExt::into_iced(t.on(s).secondary)),
+                    strip,
+                ]
+                .spacing(12),
             )
             .padding([0, 16]);
 
             container(chrome::window_frame(t, s, header, content.into()))
                 .width(320)
-                .height(180)
+                .height(210)
         };
 
         row![
@@ -1071,7 +1149,7 @@ impl Gallery {
             Surface::Paper,
             row![
                 button(text("Cancel").size(size))
-                    .style(style::button::rest(t, Surface::Paper))
+                    .style(style::button::rest(t, Surface::Paper, Chrome::Shell))
                     .padding(t.paddings.dialog_button)
                     .on_press(Message::DemoPressed),
                 Space::new().width(Fill),
@@ -1506,9 +1584,23 @@ impl Gallery {
         // `Svg`'s color can't follow the button's status), so the disabled
         // one passes the disabled role by hand.
         let buttons = row![
-            widget::pill_button(t, s, "Save", Some(Message::DemoPressed), true),
-            widget::pill_button(t, s, "Cancel", Some(Message::DemoPressed), false),
-            widget::pill_button(t, s, "Disabled", None, false),
+            widget::pill_button(
+                t,
+                s,
+                Chrome::Shell,
+                "Save",
+                Some(Message::DemoPressed),
+                true
+            ),
+            widget::pill_button(
+                t,
+                s,
+                Chrome::Shell,
+                "Cancel",
+                Some(Message::DemoPressed),
+                false
+            ),
+            widget::pill_button(t, s, Chrome::Shell, "Disabled", None, false),
             widget::icon_button(
                 t,
                 s,
@@ -1544,6 +1636,7 @@ impl Gallery {
         let segmented = widget::segmented_row(
             t,
             s,
+            Chrome::Shell,
             &[(0usize, "Files"), (1, "Folders"), (2, "All")],
             &self.segment_selected,
             Message::SegmentSelected,
@@ -1556,6 +1649,7 @@ impl Gallery {
         let view_switcher = widget::segmented_row_icons(
             t,
             s,
+            Chrome::Shell,
             &[(0usize, Icon::List), (1, Icon::LayoutGrid)],
             &self.view_selected,
             Message::ViewSelected,
@@ -1575,7 +1669,14 @@ impl Gallery {
             row![
                 widget::text::secondary(t, s, "Moving 3 items…"),
                 Space::new().width(Fill),
-                widget::pill_button(t, s, "Undo", Some(Message::DemoPressed), false),
+                widget::pill_button(
+                    t,
+                    s,
+                    Chrome::Shell,
+                    "Undo",
+                    Some(Message::DemoPressed),
+                    false
+                ),
             ]
             .spacing(12)
             .align_y(iced::Center),

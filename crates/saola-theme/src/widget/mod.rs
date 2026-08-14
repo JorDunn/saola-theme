@@ -46,7 +46,7 @@ use iced::widget::{
     button, container, progress_bar, rule, Column, Container, ProgressBar, Row, Rule, Space,
 };
 use iced::{Center, Element, Fill};
-use saola_tokens::{Surface, Theme};
+use saola_tokens::{Chrome, Surface, Theme};
 
 use crate::convert::{ui_font, ui_font_regular, ColorExt};
 use crate::icon::{icon, Icon};
@@ -282,7 +282,7 @@ pub fn dot<'a, M: 'a>(
 // ---------------------------------------------------------------------------
 
 /// A text pill button: [`style::button::emphasis`] (terracotta when
-/// `emphasized`, the ivory/fill rest recipe otherwise) at fixed
+/// `emphasized`, the rest recipe for `s`/`c` otherwise) at fixed
 /// `sizes.hit_target_bar` height, label centered via [`centered`],
 /// horizontal padding from `paddings.pill_button`. Vertical padding is zero
 /// — under a fixed height the centering sandwich replaces it (the pattern
@@ -294,15 +294,16 @@ pub fn dot<'a, M: 'a>(
 /// `Status::Disabled` is a feature here, not a gotcha.
 ///
 /// ```no_run
-/// use saola_theme::{widget, Surface, Theme};
+/// use saola_theme::{widget, Chrome, Surface, Theme};
 ///
 /// let t = Theme::saola();
 /// let _save: iced::Element<'_, ()> =
-///     widget::pill_button(&t, Surface::Paper, "Save", Some(()), true);
+///     widget::pill_button(&t, Surface::Paper, Chrome::Window, "Save", Some(()), true);
 /// ```
 pub fn pill_button<'a, M: Clone + 'a>(
     t: &Theme,
     s: Surface,
+    c: Chrome,
     label: &'a str,
     on_press: Option<M>,
     emphasized: bool,
@@ -315,7 +316,7 @@ pub fn pill_button<'a, M: Clone + 'a>(
     button(content)
         .height(t.sizes.hit_target_bar)
         .padding([0.0, t.paddings.pill_button[1]])
-        .style(style::button::emphasis(t, s, emphasized))
+        .style(style::button::emphasis(t, s, c, emphasized))
         .on_press_maybe(on_press)
         .into()
 }
@@ -632,6 +633,7 @@ fn segment_height(t: &Theme) -> f32 {
 pub fn segmented_row<'a, T, M>(
     t: &Theme,
     s: Surface,
+    c: Chrome,
     options: &[(T, &'a str)],
     selected: &T,
     on_select: impl Fn(T) -> M,
@@ -662,7 +664,7 @@ where
             button(content)
                 .height(height)
                 .padding([0.0, t.sizes.island_gap])
-                .style(style::segmented::segment(t, s, is_selected))
+                .style(style::segmented::segment(t, s, c, is_selected))
                 .on_press(on_select(value.clone())),
         );
     }
@@ -678,13 +680,14 @@ where
 /// at build time (workaround #3 in the module docs). The three values are
 /// copied verbatim from that style's `selected_label`/`rest_label` locals;
 /// parity is asserted in [`tests::segment_tint_matches_the_segment_styles_label_color`].
-fn segment_tint(t: &Theme, s: Surface, is_selected: bool) -> iced::Color {
+fn segment_tint(t: &Theme, s: Surface, c: Chrome, is_selected: bool) -> iced::Color {
     if is_selected {
         t.palette.paper.into_iced()
     } else {
-        match s {
-            Surface::Ink => t.palette.ink.into_iced(),
-            Surface::Paper => t.on_paper.primary.into_iced(),
+        match (s, c) {
+            (Surface::Ink, Chrome::Shell) => t.palette.ink.into_iced(),
+            (Surface::Ink, Chrome::Window) => t.on_ink.primary.into_iced(),
+            (Surface::Paper, _) => t.on_paper.primary.into_iced(),
         }
     }
 }
@@ -696,8 +699,8 @@ fn segment_tint(t: &Theme, s: Surface, is_selected: bool) -> iced::Color {
 /// list/grid view-switcher shape ([`Icon::List`] | [`Icon::LayoutGrid`]).
 ///
 /// Unlike [`icon_button`], the tint is *not* the caller's job: a segment's
-/// content color is fully determined by `is_selected` and the surface,
-/// both of which this constructor already knows, so [`segment_tint`]
+/// content color is fully determined by `is_selected`, the surface, and the
+/// chrome, all of which this constructor already knows, so [`segment_tint`]
 /// computes it internally. Baking the tint is safe here — workaround #3
 /// (an `Svg` can't follow the button's live `Status`) costs nothing,
 /// because [`style::segmented::segment`] keeps its label color constant
@@ -708,6 +711,7 @@ fn segment_tint(t: &Theme, s: Surface, is_selected: bool) -> iced::Color {
 pub fn segmented_row_icons<'a, T, M>(
     t: &Theme,
     s: Surface,
+    c: Chrome,
     options: &[(T, Icon)],
     selected: &T,
     on_select: impl Fn(T) -> M,
@@ -727,7 +731,7 @@ where
         let content = container(icon(
             *kind,
             t.sizes.icon_row,
-            segment_tint(t, s, is_selected),
+            segment_tint(t, s, c, is_selected),
         ))
         .align_x(Center)
         .align_y(Center)
@@ -736,7 +740,7 @@ where
             button(content)
                 .height(height)
                 .padding([0.0, t.sizes.island_gap])
-                .style(style::segmented::segment(t, s, is_selected))
+                .style(style::segmented::segment(t, s, c, is_selected))
                 .on_press(on_select(value.clone())),
         );
     }
@@ -957,8 +961,8 @@ mod tests {
         let _: Element<'_, ()> = footer_strip(&t, s, hairline(&t, s));
         let _: Element<'_, ()> = swatch(24.0, 8.0, style::container::badge(&t));
         let _: Element<'_, ()> = dot(6.0, style::container::badge(&t));
-        let _: Element<'_, ()> = pill_button(&t, s, "Save", Some(()), true);
-        let _: Element<'_, ()> = pill_button(&t, s, "Save", None, false);
+        let _: Element<'_, ()> = pill_button(&t, s, Chrome::Shell, "Save", Some(()), true);
+        let _: Element<'_, ()> = pill_button(&t, s, Chrome::Window, "Save", None, false);
         let _: Element<'_, ()> = icon_button(
             &t,
             s,
@@ -992,11 +996,18 @@ mod tests {
             role(&t, s, Emphasis::Disabled),
             None,
         );
-        let _: Element<'_, ()> =
-            segmented_row(&t, s, &[(0u8, "Files"), (1, "Folders")], &0u8, |_| ());
+        let _: Element<'_, ()> = segmented_row(
+            &t,
+            s,
+            Chrome::Shell,
+            &[(0u8, "Files"), (1, "Folders")],
+            &0u8,
+            |_| (),
+        );
         let _: Element<'_, ()> = segmented_row_icons(
             &t,
             s,
+            Chrome::Window,
             &[(0u8, Icon::List), (1, Icon::LayoutGrid)],
             &0u8,
             |_| (),
@@ -1049,15 +1060,17 @@ mod tests {
     fn segment_tint_matches_the_segment_styles_label_color() {
         let t = Theme::saola();
         for s in [Surface::Ink, Surface::Paper] {
-            for is_selected in [false, true] {
-                // The closure ignores its `&iced::Theme` argument (every
-                // color was captured from the Saola theme), so any variant
-                // works here.
-                let style = style::segmented::segment(&t, s, is_selected)(
-                    &iced::Theme::Light,
-                    iced::widget::button::Status::Active,
-                );
-                assert_eq!(segment_tint(&t, s, is_selected), style.text_color);
+            for c in [Chrome::Shell, Chrome::Window] {
+                for is_selected in [false, true] {
+                    // The closure ignores its `&iced::Theme` argument (every
+                    // color was captured from the Saola theme), so any variant
+                    // works here.
+                    let style = style::segmented::segment(&t, s, c, is_selected)(
+                        &iced::Theme::Light,
+                        iced::widget::button::Status::Active,
+                    );
+                    assert_eq!(segment_tint(&t, s, c, is_selected), style.text_color);
+                }
             }
         }
     }

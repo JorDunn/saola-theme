@@ -16,12 +16,12 @@
 //! never as a control's fill.
 //!
 //! ```no_run
-//! use saola_theme::{style, Surface, Theme};
+//! use saola_theme::{style, Chrome, Surface, Theme};
 //! use iced::widget::button;
 //!
 //! let theme = Theme::saola();
 //! let _wifi: iced::widget::Button<'_, ()> =
-//!     button("Wi-Fi").style(style::button::rest(&theme, Surface::Ink));
+//!     button("Wi-Fi").style(style::button::rest(&theme, Surface::Ink, Chrome::Shell));
 //! ```
 //!
 //! Layering: [`saola_tokens`] is pure data (no GUI dependencies); this crate
@@ -60,7 +60,7 @@ pub use convert::{to_iced_theme, ColorExt, GradientExt, ShadowExt};
 // common call `saola_theme::icon(...)` and the qualified
 // `saola_theme::icon::battery_icon(...)` both resolve.
 pub use icon::{icon, Icon};
-pub use saola_tokens::{Surface, Theme};
+pub use saola_tokens::{Chrome, Surface, Theme};
 
 /// The token crate, re-exported so consumers only depend on `saola-theme`.
 pub use saola_tokens as tokens;

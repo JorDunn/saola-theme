@@ -18,7 +18,7 @@
 
 use iced::widget::{button, container};
 use iced::{Background, Border, Color};
-use saola_tokens::{Surface, Theme};
+use saola_tokens::{Chrome, Surface, Theme};
 
 use crate::convert::ColorExt;
 
@@ -42,29 +42,39 @@ pub fn track(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> container::Style
 
 /// One segment (key) in the row. `is_selected` picks the look: the lit
 /// segment is `button::active`'s terracotta pill with an ivory label,
-/// identical on both surfaces; every other segment is `button::rest`'s
-/// ivory-on-ink / fill-on-paper pill with an ink label. Hover/press step
-/// through the same fill recipes those two helpers use.
+/// identical on both surfaces and in both chromes; every other segment is
+/// `button::rest`'s pill with an ink label — ivory on ink in
+/// [`Chrome::Shell`], the translucent `on_ink` fill ladder on ink in
+/// [`Chrome::Window`], the `on_paper` fill ladder on paper in both.
+/// Hover/press step through the same fill recipes those two helpers use.
 pub fn segment(
     t: &Theme,
     s: Surface,
+    c: Chrome,
     is_selected: bool,
 ) -> impl Fn(&iced::Theme, button::Status) -> button::Style + Clone {
     let radius = t.radii.pill;
     let on = *t.on(s);
     let accent = t.palette.accent;
 
-    // `button::rest`'s recipe: opaque ivory pill on ink (its own surface is
-    // paper, so hover/press are the on-paper fill steps composited over
-    // paper), translucent ink-fill pill on paper.
-    let (rest_bg, rest_hover, rest_press, rest_label) = match s {
-        Surface::Ink => (
+    // `button::rest`'s recipe: opaque ivory pill on ink in shell chrome (its
+    // own surface is paper, so hover/press are the on-paper fill steps
+    // composited over paper), the translucent ivory fill ladder on ink in a
+    // window, translucent ink-fill pill on paper.
+    let (rest_bg, rest_hover, rest_press, rest_label) = match (s, c) {
+        (Surface::Ink, Chrome::Shell) => (
             t.palette.paper,
             t.on_paper.fill_subtle.over(t.palette.paper),
             t.on_paper.fill.over(t.palette.paper),
             t.palette.ink,
         ),
-        Surface::Paper => (
+        (Surface::Ink, Chrome::Window) => (
+            t.on_ink.fill,
+            t.on_ink.fill_strong,
+            t.on_ink.track,
+            t.on_ink.primary,
+        ),
+        (Surface::Paper, _) => (
             t.on_paper.fill,
             t.on_paper.fill_strong,
             t.on_paper.track,

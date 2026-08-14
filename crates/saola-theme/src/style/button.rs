@@ -3,8 +3,9 @@
 //!
 //! The one rule, applied to buttons:
 //!
-//! - [`rest`] — a control at rest: a solid **ivory** pill on ink (ink label),
-//!   an ink **fill** pill on paper (ink label).
+//! - [`rest`] — a control at rest: a solid **ivory** pill on ink (ink label)
+//!   in shell chrome, a translucent ivory **fill** pill on ink inside an app
+//!   window, an ink **fill** pill on paper (ink label) in both.
 //! - [`active`] — on / selected / live: a **terracotta** pill with an ivory
 //!   label, identical on both surfaces.
 //! - [`emphasis`] — [`rest`] or [`active`] behind one closure type, picked
@@ -37,11 +38,12 @@
 //! State layering moves through the alpha fill steps, never new colors. A
 //! button has a single flat `background`, so there are two cases:
 //!
-//! - The button's resting fill is **translucent** (`bare`, `rest` on paper):
-//!   we just pick a deeper fill step and let iced blend it over whatever
-//!   surface is behind the button.
-//! - The button's resting fill is **opaque** (ivory `rest` on ink,
-//!   terracotta `active`): the fill step must layer over the button's *own*
+//! - The button's resting fill is **translucent** (`bare`, `rest` on paper,
+//!   `rest` on ink in [`Chrome::Window`]): we just pick a deeper fill step
+//!   and let iced blend it over whatever surface is behind the button.
+//! - The button's resting fill is **opaque** (ivory `rest` on ink in
+//!   [`Chrome::Shell`], terracotta `active`): the fill step must layer over
+//!   the button's *own*
 //!   fill, so we pre-composite in token space with
 //!   `saola_tokens::Color::over` (opaque base ⇒ opaque result). An ivory
 //!   pill is a tiny paper surface, so it hovers through the *on-paper*
@@ -57,7 +59,7 @@
 
 use iced::widget::button::{Status, Style};
 use iced::Background;
-use saola_tokens::{Surface, Theme};
+use saola_tokens::{Chrome, Surface, Theme};
 
 use crate::convert::ColorExt;
 
@@ -75,26 +77,44 @@ fn pill(background: Option<iced::Color>, text_color: iced::Color, radius: f32) -
 
 /// A control at rest — off, unselected, available.
 ///
-/// On ink: a solid ivory pill with an ink label. On paper: an ink-fill pill
-/// with an ink label. Hover and press step through the fill roles.
-pub fn rest(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+/// On ink the recipe depends on `c`. In [`Chrome::Shell`] (panel, popover,
+/// launcher) it is the style guide §6 secondary pill: a solid ivory fill with
+/// an ink label. In [`Chrome::Window`] — an ink app window — a full-opacity
+/// ivory pill out-shouts the one terracotta control it sits beside, so rest
+/// recedes into the `on_ink` fill ladder instead (`fill` → `fill_strong` →
+/// `track`) with an `on_ink.primary` label.
+///
+/// On paper the two chromes are **identical**: a control at rest is already a
+/// translucent ink fill there, so there is nothing louder to step back from.
+///
+/// Hover and press step through the fill roles. (On paper, and on ink in
+/// window context, `fill_strong` and `track` share a value by construction,
+/// so press reads one step past hover only where the tokens provide one.)
+pub fn rest(t: &Theme, s: Surface, c: Chrome) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     // Copy the Copy token values out of the theme so the closure is 'static.
     let radius = t.radii.pill;
     let on = *t.on(s);
-    let (rest_bg, hover_bg, press_bg, label) = match s {
+    let (rest_bg, hover_bg, press_bg, label) = match (s, c) {
         // Solid ivory pill: its own surface is paper, so hover/press are the
         // on-paper fill steps composited over paper (opaque results).
-        Surface::Ink => (
+        (Surface::Ink, Chrome::Shell) => (
             t.palette.paper,
             t.on_paper.fill_subtle.over(t.palette.paper),
             t.on_paper.fill.over(t.palette.paper),
             t.palette.ink,
         ),
+        // Translucent ivory-fill pill inside an ink window: iced blends the
+        // deeper steps over the ink ground, so there is no `Color::over`
+        // pre-compositing here (that is only for opaque fills).
+        (Surface::Ink, Chrome::Window) => (
+            t.on_ink.fill,
+            t.on_ink.fill_strong,
+            t.on_ink.track,
+            t.on_ink.primary,
+        ),
         // Translucent ink-fill pill: iced blends deeper steps over the paper
-        // window behind it. (On paper, `fill_strong` and `track` share a
-        // value by construction, so press reads one step past hover only
-        // where the tokens provide one.)
-        Surface::Paper => (
+        // window behind it. Same in both chromes.
+        (Surface::Paper, _) => (
             t.on_paper.fill,
             t.on_paper.fill_strong,
             t.on_paper.track,
@@ -323,22 +343,33 @@ pub fn menu_row(
 /// the branching *inside* a single closure instead: both recipes are
 /// computed into locals up front, and `emphasized` selects between them per
 /// status.
+///
+/// `c` reaches the un-emphasized branch only — it is [`rest`]'s recipe, so it
+/// carries [`rest`]'s shell-versus-window split on ink. The emphasized branch
+/// is [`active`]'s terracotta, identical in both chromes.
 pub fn emphasis(
     t: &Theme,
     s: Surface,
+    c: Chrome,
     emphasized: bool,
 ) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     let radius = t.radii.pill;
     let on = *t.on(s);
-    // `rest`'s recipe — see [`rest`] for the reasoning per surface.
-    let (rest_bg, rest_hover, rest_press, rest_label) = match s {
-        Surface::Ink => (
+    // `rest`'s recipe — see [`rest`] for the reasoning per surface/chrome.
+    let (rest_bg, rest_hover, rest_press, rest_label) = match (s, c) {
+        (Surface::Ink, Chrome::Shell) => (
             t.palette.paper,
             t.on_paper.fill_subtle.over(t.palette.paper),
             t.on_paper.fill.over(t.palette.paper),
             t.palette.ink,
         ),
-        Surface::Paper => (
+        (Surface::Ink, Chrome::Window) => (
+            t.on_ink.fill,
+            t.on_ink.fill_strong,
+            t.on_ink.track,
+            t.on_ink.primary,
+        ),
+        (Surface::Paper, _) => (
             t.on_paper.fill,
             t.on_paper.fill_strong,
             t.on_paper.track,
