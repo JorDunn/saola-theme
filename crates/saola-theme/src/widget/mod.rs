@@ -40,10 +40,12 @@
 
 pub mod text;
 
+use iced::widget::scrollable::{Anchor, Direction, Scrollbar};
 use iced::widget::text as text_widget;
 use iced::widget::text::IntoFragment;
 use iced::widget::{
-    button, container, progress_bar, rule, Column, Container, ProgressBar, Row, Rule, Space,
+    button, container, progress_bar, rule, scrollable, Column, Container, ProgressBar, Row, Rule,
+    Space,
 };
 use iced::{Center, Element, Fill};
 use saola_tokens::{Chrome, Surface, Theme};
@@ -478,6 +480,30 @@ pub fn menu_row<'a, M: Clone + 'a>(
 /// label type per call: `L` is monomorphic, so a trail mixing `&str` and
 /// `String` converts everything to one of them first.
 ///
+/// ## The width budget
+///
+/// A path is unbounded but the toolbar it sits in is not, so the trail is a
+/// horizontal [`iced::widget::scrollable`] anchored to its **end**
+/// ([`Anchor::End`], set via `anchor_x`): the viewport sticks to the trailing
+/// crumb — the folder you are actually in — and it is the *front* of the path
+/// that slides out of view as the trail deepens. That is the right end to
+/// lose: "…/src/style" answers where you are; "Home / Projects / …" does not.
+///
+/// `width` is the budget, and it is the caller's because only the caller
+/// knows what the trail shares its row with:
+///
+/// - `Length::Shrink` — the trail is laid out at its natural width, exactly as
+///   it was before this parameter existed. Nothing scrolls, nothing clips.
+/// - `Length::Fill` / `Length::Fixed` — the trail caps at the budget and
+///   scrolls inside it. **Pass `Fill` in a constrained toolbar**: with
+///   `Shrink` a deep path grows until it paints over the controls beside it.
+///
+/// The scrollbar is a `Scrollbar` slimmed to `sizes.progress_girth` (the
+/// crate's thin-rail thickness, shared with [`style::progress`]), left
+/// floating rather than embedded — iced only reserves layout space for a
+/// scrollbar given an explicit `spacing`, so a one-line trail keeps its own
+/// height, and the rail is painted only while the content actually overflows.
+///
 /// ```no_run
 /// use saola_theme::{widget, Surface, Theme};
 ///
@@ -486,18 +512,21 @@ pub fn menu_row<'a, M: Clone + 'a>(
 ///     &t,
 ///     Surface::Paper,
 ///     [("Home", Some(())), ("Projects", Some(())), ("saola-theme", None)],
+///     iced::Length::Shrink,
 /// );
 /// let name = String::from("saola-theme");
 /// let _owned: iced::Element<'_, ()> = widget::breadcrumb(
 ///     &t,
 ///     Surface::Paper,
 ///     [(String::from("Home"), Some(())), (name, None)],
+///     iced::Fill,
 /// );
 /// ```
 pub fn breadcrumb<'a, L, M>(
     t: &Theme,
     s: Surface,
     crumbs: impl IntoIterator<Item = (L, Option<M>)>,
+    width: impl Into<iced::Length>,
 ) -> Element<'a, M>
 where
     L: IntoFragment<'a>,
@@ -522,7 +551,15 @@ where
             trail = trail.push(icon(Icon::ChevronRight, t.sizes.icon_bar, separator_tint));
         }
     }
-    trail.into()
+    let rail = Scrollbar::new()
+        .width(t.sizes.progress_girth)
+        .scroller_width(t.sizes.progress_girth);
+    scrollable(trail)
+        .direction(Direction::Horizontal(rail))
+        .anchor_x(Anchor::End)
+        .width(width)
+        .style(style::scrollable::rest(t, s))
+        .into()
 }
 
 // ---------------------------------------------------------------------------
@@ -1020,6 +1057,7 @@ mod tests {
                 ("Projects", Some(())),
                 ("saola-theme", None),
             ],
+            iced::Length::Shrink,
         );
         let _: Element<'_, ()> = breadcrumb(
             &t,
@@ -1028,7 +1066,9 @@ mod tests {
                 (String::from("Home"), Some(())),
                 (String::from("src"), None),
             ],
+            iced::Length::Fixed(240.0),
         );
+        let _: Element<'_, ()> = breadcrumb(&t, s, [("Home", Some(())), ("src", None)], Fill);
         let _: Element<'_, ()> = bare_icon_item(&t, Icon::Lock, "Lock", false, Some(()));
         let _: Element<'_, ()> = bare_icon_item(&t, Icon::Lock, "Lock", true, Some(()));
         let _: Element<'_, ()> = group_header(&t, "Files", 3, true, Some(()));
@@ -1050,6 +1090,13 @@ mod tests {
         let crumbs: &[(&str, Option<()>)] = &[("Home", Some(())), ("saola-theme", None)];
         let is_current: Vec<bool> = crumbs.iter().map(|(_, m)| m.is_none()).collect();
         assert_eq!(is_current, vec![false, true]);
+        // The same crumbs through the constructor, under both ends of the
+        // width budget: the convention has to survive the `scrollable`
+        // wrapper the trail now lives inside.
+        let t = Theme::saola();
+        for width in [iced::Length::Shrink, Fill] {
+            let _: Element<'_, ()> = breadcrumb(&t, Surface::Paper, crumbs.iter().cloned(), width);
+        }
     }
 
     /// [`segment_tint`] is a verbatim copy of the label colors inside

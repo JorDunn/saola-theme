@@ -1547,12 +1547,21 @@ impl Gallery {
     /// The current crumb (last segment, `on_press: None`) draws
     /// emphasized — `style::button::breadcrumb`'s terracotta "on" look —
     /// while every other crumb is quiet until hovered.
+    ///
+    /// Both of those pass `Length::Shrink`, the width budget that reproduces
+    /// the unconstrained row the trail used to be. The third specimen is the
+    /// point of the budget: a deep path inside a deliberately narrow
+    /// `Length::Fixed(260.0)`, so the trail scrolls horizontally and its
+    /// `Anchor::End` keeps the current crumb parked at the trailing edge —
+    /// the front of the path is what slides out of view, never the folder
+    /// you are standing in.
     fn breadcrumb_row(&self, s: Surface) -> Element<'_, Message> {
         let t = &self.theme;
         let short = widget::breadcrumb(
             t,
             s,
             [("Home", Some(Message::DemoPressed)), ("Documents", None)],
+            iced::Length::Shrink,
         );
         // Owned labels — the reason crumbs are by-value: a real consumer
         // builds these from a `PathBuf` each frame.
@@ -1565,8 +1574,32 @@ impl Gallery {
                 ("saola-theme".to_string(), Some(Message::DemoPressed)),
                 ("src".to_string(), None),
             ],
+            iced::Length::Shrink,
         );
-        column![short, long].spacing(12).into()
+        let budgeted = widget::breadcrumb(
+            t,
+            s,
+            [
+                ("Home".to_string(), Some(Message::DemoPressed)),
+                ("Developer".to_string(), Some(Message::DemoPressed)),
+                ("saola-theme".to_string(), Some(Message::DemoPressed)),
+                ("crates".to_string(), Some(Message::DemoPressed)),
+                ("saola-theme".to_string(), Some(Message::DemoPressed)),
+                ("src".to_string(), Some(Message::DemoPressed)),
+                ("widget".to_string(), None),
+            ],
+            iced::Length::Fixed(260.0),
+        );
+        column![
+            short,
+            long,
+            text("Deep trail in a 260 px budget — scrolls, anchored to the current crumb")
+                .size(t.typography.size.label)
+                .color(convert::ColorExt::into_iced(t.on(s).tertiary)),
+            budgeted,
+        ]
+        .spacing(12)
+        .into()
     }
 
     /// The bundled composite constructors from `widget`: the pill/icon
