@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.12.0...saola-theme-v0.13.0) - 2026-08-14
+
+### Changed
+
+- *(saola-theme)* [**breaking**] breadcrumb width budget — end-anchored scrollable trail
+- *(saola-theme)* [**breaking**] window-vs-shell chrome context — rest recipes take Chrome
+
 ## [0.12.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.11.0...saola-theme-v0.12.0) - 2026-08-11
 
 ### Changed
