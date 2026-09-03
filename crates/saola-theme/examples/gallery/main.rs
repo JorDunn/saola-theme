@@ -1305,7 +1305,7 @@ impl Gallery {
             widget::bare_icon_item(t, Icon::Lock, "Lock", false, Some(Message::DemoPressed)),
             widget::bare_icon_item(
                 t,
-                Icon::RotateCcw,
+                Icon::RotateCw,
                 "Restart",
                 true,
                 Some(Message::DemoPressed)

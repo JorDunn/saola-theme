@@ -49,8 +49,9 @@
 //! argument.
 //!
 //! What's bundled: the union of the generic Lucide glyphs the panel and the
-//! file manager grew independently, plus the two Saola marks (style guide
-//! §8 — the mark is design-system property, so its assets live here).
+//! file manager grew independently, the greeter's power cluster and
+//! no-avatar glyphs, plus the two Saola marks (style guide §8 — the mark is
+//! design-system property, so its assets live here).
 //! App-specific brand icons (the panel's `anthropic`/`claude-code` pair)
 //! stay in the app that reports on that product — an app that needs a brand
 //! glyph keeps a tiny local icons module for it and uses this one for
@@ -220,6 +221,18 @@ pub enum Icon {
     Check,
     /// A network/remote-scheme location.
     Globe,
+
+    // ── Session / power cluster ─────────────────────────────────────────
+    /// Shut down.
+    Power,
+    /// Reboot. Clockwise on purpose: `RotateCcw` is the undo glyph, and a
+    /// reboot is a fresh start, not a step back.
+    RotateCw,
+    /// Suspend.
+    Moon,
+    /// A person with no avatar — the greeter's "Not listed?" tile, and any
+    /// user row that has no picture to show.
+    UserRound,
 }
 
 impl Icon {
@@ -304,6 +317,10 @@ impl Icon {
             Icon::ExternalLink => include_bytes!("../assets/icons/external-link.svg"),
             Icon::Check => include_bytes!("../assets/icons/check.svg"),
             Icon::Globe => include_bytes!("../assets/icons/globe.svg"),
+            Icon::Power => include_bytes!("../assets/icons/power.svg"),
+            Icon::RotateCw => include_bytes!("../assets/icons/rotate-cw.svg"),
+            Icon::Moon => include_bytes!("../assets/icons/moon.svg"),
+            Icon::UserRound => include_bytes!("../assets/icons/user-round.svg"),
         }
     }
 
@@ -437,7 +454,7 @@ mod tests {
 
     /// Every embedded icon, so the tests below can walk the whole asset set
     /// without a second hand-maintained list of bytes.
-    const ALL: [Icon; 76] = [
+    const ALL: [Icon; 80] = [
         Icon::Volume2,
         Icon::Volume1,
         Icon::Volume,
@@ -514,6 +531,10 @@ mod tests {
         Icon::ExternalLink,
         Icon::Check,
         Icon::Globe,
+        Icon::Power,
+        Icon::RotateCw,
+        Icon::Moon,
+        Icon::UserRound,
     ];
 
     /// The solid-filled assets — exempt from the stroke-width and

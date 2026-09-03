@@ -398,7 +398,7 @@ enough to show.** Grouped by application, each group collapsible, with a count c
 | Notification centre | Ink, right | Grouped, collapsible, DND toggle, media footer. |
 | Quick settings | Ink, right | Power profile selector, battery and Wi-Fi readouts, volume slider, media. Buttons: terracotta fill when active/selected, ivory at rest, per §1's one rule. |
 | Lock | Wallpaper | Clock, date, temperature centred, nothing else. Click reveals avatar → name → password. |
-| Greeter | Wallpaper | Identical to lock plus a user list and a session list as ivory pills below the field. |
+| Greeter | Wallpaper | Lock minus temperature, plus user tiles below the field (`selection_tile` + `avatar_lock`; a "Not listed?" tile is always present), and a top-right battery readout + power cluster (shutdown/reboot/suspend as bare icons, one shared label, two-step confirm). Session pills only when configured, and only when more than one session is installed. |
 | Power menu | Ink, centred | Bare icons, one shared label. |
 | Boot menu | Ink (optionally wallpaper at 78%) | Bare icons and text, terracotta on the active entry, progress rule as the countdown. |
 | Boot / shutdown splash | Ink | Mark and one indeterminate rule. Shutdown drops terracotta entirely. |
