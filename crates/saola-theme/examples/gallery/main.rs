@@ -1187,26 +1187,31 @@ impl Gallery {
     /// for the toast living out `motion.toast_in` → `toast_idle` →
     /// `toast_out`: arriving (alpha rising, life still full), mid-idle
     /// (alpha settled, life half-drained), and fading out (alpha falling,
-    /// life already at zero — nothing left to count down). The urgent
-    /// variant sits beside the filmstrip as a fourth, static frame:
-    /// `card_urgent` gets the ring but never the rule (10b: "a terracotta
-    /// ring and no life rule").
+    /// life already at zero — nothing left to count down). A fourth frame
+    /// demonstrates `toast_alpha_over`/`life_fraction_over` against a
+    /// shorter, `Notify`-supplied rest span (1500 ms rather than the
+    /// theme's default `motion.toast_idle` of 5000 ms) at that same 1500 ms
+    /// elapsed mark — still idle, but already well into its drain. The
+    /// urgent variant sits beside the filmstrip as two more, static frames:
+    /// `card_urgent` (the existing paper card floating over ink) and its
+    /// ink-toast twin `notification_card_urgent` — both get the ring,
+    /// neither gets the rule (10b: "a terracotta ring and no life rule").
     fn notification_column(&self) -> Element<'_, Message> {
         let t = &self.theme;
         let caption = convert::ColorExt::into_iced(t.on_ink.tertiary);
         let icon_tint = widget::role(t, Surface::Ink, Emphasis::Rest);
 
-        let toast = |elapsed_ms: u64| {
+        let toast = |elapsed_ms: u64, rest_ms: u32| {
             let elapsed = Duration::from_millis(elapsed_ms);
-            let alpha = motion::toast_alpha(t, elapsed);
-            let life = motion::life_fraction(t, elapsed);
+            let alpha = motion::toast_alpha_over(t, rest_ms, elapsed);
+            let life = motion::life_fraction_over(t, rest_ms, elapsed);
 
             let tile = container(icon(Icon::Image, t.sizes.icon_menu, icon_tint))
                 .width(t.sizes.icon_tile)
                 .height(t.sizes.icon_tile)
                 .align_x(iced::Center)
                 .align_y(iced::Center)
-                .style(style::notification::icon_tile(t));
+                .style(style::notification::icon_tile(t, alpha));
 
             let texts = column![
                 text("Screenshot saved")
@@ -1225,7 +1230,7 @@ impl Gallery {
             let rule = progress_bar(0.0..=1.0, life)
                 .length(Fill)
                 .girth(t.sizes.life_rule)
-                .style(style::notification::life_rule(t));
+                .style(style::notification::life_rule(t, alpha));
 
             container(column![body, rule])
                 .style(style::container::notification_card(t, alpha))
@@ -1234,22 +1239,29 @@ impl Gallery {
 
         let filmstrip = row![
             column![
-                toast(0),
+                toast(0, t.motion.toast_idle),
                 text("0 ms — arriving")
                     .size(t.typography.size.label)
                     .color(caption),
             ]
             .spacing(t.sizes.gap_tight),
             column![
-                toast(3000),
+                toast(3000, t.motion.toast_idle),
                 text("3000 ms — mid-idle, draining")
                     .size(t.typography.size.label)
                     .color(caption),
             ]
             .spacing(t.sizes.gap_tight),
             column![
-                toast(6000),
+                toast(6000, t.motion.toast_idle),
                 text("6000 ms — fading out, expired")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+            column![
+                toast(1500, 1500),
+                text("1500 ms — 1500 ms rest span, draining faster (toast_alpha_over)")
                     .size(t.typography.size.label)
                     .color(caption),
             ]
@@ -1273,21 +1285,47 @@ impl Gallery {
         .padding(18)
         .width(300);
 
+        let urgent_toast = container(
+            column![
+                text("Battery critical")
+                    .font(convert::display_font(t))
+                    .size(t.typography.size.section_heading)
+                    .color(convert::ColorExt::into_iced(t.on_ink.primary)),
+                text("6% remaining — plug in now")
+                    .size(t.typography.size.secondary)
+                    .color(convert::ColorExt::into_iced(t.on_ink.secondary)),
+            ]
+            .spacing(6),
+        )
+        .style(style::container::notification_card_urgent(t, 1.0))
+        .padding(18)
+        .width(300);
+
         column![
             filmstrip,
             text(format!(
-                "toast_in {} ms · toast_idle {} ms · toast_out {} ms — life_rule drains across toast_idle only",
+                "toast_in {} ms · toast_idle {} ms (default rest) · toast_out {} ms — life_rule drains across the rest span only",
                 t.motion.toast_in, t.motion.toast_idle, t.motion.toast_out
             ))
             .size(t.typography.size.label)
             .color(caption),
-            column![
-                text("Urgent — card_urgent, no life rule (10b)")
-                    .size(t.typography.size.label)
-                    .color(caption),
-                urgent,
+            row![
+                column![
+                    text("card_urgent — paper card over ink, no life rule (10b)")
+                        .size(t.typography.size.label)
+                        .color(caption),
+                    urgent,
+                ]
+                .spacing(t.sizes.gap_tight),
+                column![
+                    text("notification_card_urgent — ink toast twin, no life rule")
+                        .size(t.typography.size.label)
+                        .color(caption),
+                    urgent_toast,
+                ]
+                .spacing(t.sizes.gap_tight),
             ]
-            .spacing(t.sizes.gap_tight),
+            .spacing(16),
         ]
         .spacing(16)
         .into()
@@ -1324,8 +1362,14 @@ impl Gallery {
     /// screen at once, a hairline, then the DND `toggler` row the centre's
     /// header carries — everything constrained to the real
     /// `notification_centre_width` token rather than the page's own `Fill`.
-    /// Ink-only, like the toast and bare-icon menu sections above: the
-    /// notification centre is shell chrome, never drawn on a paper window.
+    /// The outer padding is `sizes.notification_centre_padding`, the gap
+    /// between the group rows and the hairline/DND row is
+    /// `sizes.notification_centre_group_gap`, and the DND row itself
+    /// carries `sizes.notification_centre_row` — the same canonical centre
+    /// rhythm a second consumer (a panel indicator popover, a settings
+    /// preview) should reuse rather than re-deriving. Ink-only, like the
+    /// toast and bare-icon menu sections above: the notification centre is
+    /// shell chrome, never drawn on a paper window.
     fn notification_centre_column(&self) -> Element<'_, Message> {
         let t = &self.theme;
         let s = Surface::Ink;
@@ -1341,16 +1385,20 @@ impl Gallery {
             .align_y(iced::Center)
             .width(Fill),
         )
-        .padding(t.paddings.strip);
+        .padding(t.paddings.strip)
+        .height(t.sizes.notification_centre_row);
 
-        column![
-            widget::group_header(t, "Messages", 3, true, Some(Message::DemoPressed)),
-            widget::group_header(t, "Mail", 12, false, Some(Message::DemoPressed)),
-            widget::hairline(t, s),
-            dnd_row,
-        ]
-        .spacing(t.sizes.gap_tight)
-        .width(t.sizes.notification_centre_width)
+        container(
+            column![
+                widget::group_header(t, "Messages", 3, true, Some(Message::DemoPressed)),
+                widget::group_header(t, "Mail", 12, false, Some(Message::DemoPressed)),
+                widget::hairline(t, s),
+                dnd_row,
+            ]
+            .spacing(t.sizes.notification_centre_group_gap)
+            .width(t.sizes.notification_centre_width),
+        )
+        .padding(t.sizes.notification_centre_padding)
         .into()
     }
 
@@ -1603,11 +1651,13 @@ impl Gallery {
     }
 
     /// The bundled composite constructors from `widget`: the pill/icon
-    /// buttons (tokens for height, padding, and centering pre-applied), the
-    /// generic `segmented_row` (sharing the Kit section's selection state —
-    /// same control, one constructor call), and the small envelopes
+    /// buttons (tokens for height, padding, and centering pre-applied,
+    /// including `pill_button_faded`, the `alpha`-scaled sibling that
+    /// `pill_button` itself wraps at `alpha: 1.0`), the generic
+    /// `segmented_row` (sharing the Kit section's selection state — same
+    /// control, one constructor call), and the small envelopes
     /// (`section_label`, `quiet_row`, `separator`, `empty_state`,
-    /// `footer_strip`) — in the given surface context.
+    /// `empty_state_row`, `footer_strip`) — in the given surface context.
     fn composites_column(&self, s: Surface) -> Element<'_, Message> {
         let t = &self.theme;
 
@@ -1634,6 +1684,15 @@ impl Gallery {
                 false
             ),
             widget::pill_button(t, s, Chrome::Shell, "Disabled", None, false),
+            widget::pill_button_faded(
+                t,
+                s,
+                Chrome::Shell,
+                "Faded",
+                Some(Message::DemoPressed),
+                true,
+                0.5
+            ),
             widget::icon_button(
                 t,
                 s,
@@ -1694,6 +1753,12 @@ impl Gallery {
             .width(Fill)
             .height(90);
 
+        // `empty_state_row`: the same tertiary-text treatment, laid out at a
+        // fixed `sizes.list_row` height instead — for a layer-shell surface
+        // that declares its height before layout and can't hand `empty_state`
+        // a Fill×Fill box to center in.
+        let empty_row = widget::empty_state_row(t, s, "No notifications");
+
         // `footer_strip`: the fixed-height card band a window docks its
         // transient chrome into (a progress readout, an undo toast).
         let footer = widget::footer_strip(
@@ -1722,6 +1787,7 @@ impl Gallery {
             widget::quiet_row(t, s, "Media — no player"),
             widget::separator(t, s),
             empty,
+            empty_row,
             footer,
         ]
         .spacing(16)

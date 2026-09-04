@@ -10,6 +10,10 @@
 //!   label, identical on both surfaces.
 //! - [`emphasis`] — [`rest`] or [`active`] behind one closure type, picked
 //!   by a `bool`, for consumers that flip a button between the two.
+//! - [`rest_faded`]/[`emphasis_faded`] — [`rest`]/[`emphasis`] at an `alpha`
+//!   opacity, for a button drawn inside a fading toast or card (iced 0.14 has
+//!   no subtree opacity, so the fade has to reach every painted color).
+//!   `rest`/`emphasis` are thin `alpha: 1.0` wrappers over these.
 //! - [`muted`] — muted / off-ish: a **subtle-fill** pill with a
 //!   secondary-emphasis label, quieter than `rest`.
 //! - [`bare`] — label only; hover/press surface it through the fill steps.
@@ -91,7 +95,34 @@ fn pill(background: Option<iced::Color>, text_color: iced::Color, radius: f32) -
 /// window context, `fill_strong` and `track` share a value by construction,
 /// so press reads one step past hover only where the tokens provide one.)
 pub fn rest(t: &Theme, s: Surface, c: Chrome) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+    rest_faded(t, s, c, 1.0)
+}
+
+/// [`rest`] at `alpha` opacity: the identical recipe, with every arm's
+/// background *and* label color — [`Status::Disabled`] included — scaled by
+/// [`crate::convert::ColorExt::with_opacity`]. [`rest`] is the thin
+/// `alpha: 1.0` wrapper over this function (not a parallel copy), so the two
+/// recipes cannot drift apart.
+///
+/// Exists for a control drawn inside a fading toast or card: iced 0.14 has
+/// no subtree opacity, so a view fading the card around a button must also
+/// fade the button itself, the same reason
+/// [`crate::style::container::notification_card`] takes `alpha`.
+///
+/// `alpha` is clamped to `0.0..=1.0` (a non-finite value reads as `1.0`),
+/// same as `notification_card`'s.
+pub fn rest_faded(
+    t: &Theme,
+    s: Surface,
+    c: Chrome,
+    alpha: f32,
+) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     // Copy the Copy token values out of the theme so the closure is 'static.
+    let alpha = if alpha.is_finite() {
+        alpha.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
     let radius = t.radii.pill;
     let on = *t.on(s);
     let (rest_bg, hover_bg, press_bg, label) = match (s, c) {
@@ -122,12 +153,24 @@ pub fn rest(t: &Theme, s: Surface, c: Chrome) -> impl Fn(&iced::Theme, Status) -
         ),
     };
     move |_, status| match status {
-        Status::Active => pill(Some(rest_bg.into_iced()), label.into_iced(), radius),
-        Status::Hovered => pill(Some(hover_bg.into_iced()), label.into_iced(), radius),
-        Status::Pressed => pill(Some(press_bg.into_iced()), label.into_iced(), radius),
+        Status::Active => pill(
+            Some(rest_bg.with_opacity(alpha)),
+            label.with_opacity(alpha),
+            radius,
+        ),
+        Status::Hovered => pill(
+            Some(hover_bg.with_opacity(alpha)),
+            label.with_opacity(alpha),
+            radius,
+        ),
+        Status::Pressed => pill(
+            Some(press_bg.with_opacity(alpha)),
+            label.with_opacity(alpha),
+            radius,
+        ),
         Status::Disabled => pill(
-            Some(on.fill_subtle.into_iced()),
-            on.disabled.into_iced(),
+            Some(on.fill_subtle.with_opacity(alpha)),
+            on.disabled.with_opacity(alpha),
             radius,
         ),
     }
@@ -353,6 +396,30 @@ pub fn emphasis(
     c: Chrome,
     emphasized: bool,
 ) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+    emphasis_faded(t, s, c, emphasized, 1.0)
+}
+
+/// [`emphasis`] at `alpha` opacity: the identical branching, with every
+/// arm's background *and* label color — [`Status::Disabled`] included —
+/// scaled by [`crate::convert::ColorExt::with_opacity`]. [`emphasis`] is the
+/// thin `alpha: 1.0` wrapper over this function (not a parallel copy), so
+/// the two recipes cannot drift apart — the same relationship
+/// [`rest_faded`] has to [`rest`].
+///
+/// `alpha` is clamped to `0.0..=1.0` (a non-finite value reads as `1.0`),
+/// same as `rest_faded`'s.
+pub fn emphasis_faded(
+    t: &Theme,
+    s: Surface,
+    c: Chrome,
+    emphasized: bool,
+    alpha: f32,
+) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+    let alpha = if alpha.is_finite() {
+        alpha.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
     let radius = t.radii.pill;
     let on = *t.on(s);
     // `rest`'s recipe — see [`rest`] for the reasoning per surface/chrome.
@@ -397,7 +464,11 @@ pub fn emphasis(
                 Status::Disabled => (on.fill_subtle, on.disabled),
             }
         };
-        pill(Some(background.into_iced()), label.into_iced(), radius)
+        pill(
+            Some(background.with_opacity(alpha)),
+            label.with_opacity(alpha),
+            radius,
+        )
     }
 }
 

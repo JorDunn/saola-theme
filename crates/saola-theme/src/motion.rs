@@ -30,6 +30,19 @@ pub fn fraction(elapsed: Duration, duration_ms: u32) -> f32 {
         .clamp(0.0, 1.0)
 }
 
+/// Cubic ease-out: `1 - (1 - f)^3`. Input is clamped to `0.0..=1.0` first, so
+/// a caller can feed it a raw [`fraction`] result without a separate clamp.
+///
+/// Style guide §5 (line ~305) specifies the toast entrance as `ease-out`;
+/// this is that curve, keyed to `design/saola-tokens.json`'s
+/// `notification.slideIn.easing`. It starts fast and settles into place,
+/// the opposite feel of `ease-in` — appropriate for something arriving on
+/// screen rather than leaving it.
+pub fn ease_out(f: f32) -> f32 {
+    let f = f.clamp(0.0, 1.0);
+    1.0 - (1.0 - f).powi(3)
+}
+
 /// A toast's opacity at `elapsed`: the style guide §5 three-phase envelope —
 /// fade in over `motion.toast_in`, hold at `1.0` for `motion.toast_idle`,
 /// fade out over `motion.toast_out`, then stay at `0.0` (the consumer
@@ -40,11 +53,25 @@ pub fn fraction(elapsed: Duration, duration_ms: u32) -> f32 {
 /// the card chrome and [`crate::convert::ColorExt::with_opacity`] for the
 /// content painted inside it.
 pub fn toast_alpha(t: &Theme, elapsed: Duration) -> f32 {
+    toast_alpha_over(t, t.motion.toast_idle, elapsed)
+}
+
+/// [`toast_alpha`] generalized over the rest span: `rest_ms` replaces
+/// `motion.toast_idle` as the hold phase's length, while the fade-in
+/// (`motion.toast_in`) and fade-out (`motion.toast_out`) stay theme-fixed.
+///
+/// `motion.toast_idle` is the *default* toast's rest span, not the only
+/// one — a `Notify` call carries its own `expire_timeout`, and that value,
+/// not the theme's default, is the rest span this function should be fed.
+///
+/// The entrance eases out ([`ease_out`]); the exit stays linear (style
+/// guide §5, line ~307: "fade to 0, linear").
+pub fn toast_alpha_over(t: &Theme, rest_ms: u32, elapsed: Duration) -> f32 {
     let in_dur = Duration::from_millis(t.motion.toast_in.into());
-    let idle_dur = Duration::from_millis(t.motion.toast_idle.into());
+    let idle_dur = Duration::from_millis(rest_ms.into());
 
     if elapsed < in_dur {
-        fraction(elapsed, t.motion.toast_in)
+        ease_out(fraction(elapsed, t.motion.toast_in))
     } else if elapsed < in_dur + idle_dur {
         1.0
     } else {
@@ -70,14 +97,23 @@ pub fn toast_alpha(t: &Theme, elapsed: Duration) -> f32 {
 /// full to empty as the toast ages, the same clamped-progress idiom
 /// [`toast_alpha`] uses for opacity.
 pub fn life_fraction(t: &Theme, elapsed: Duration) -> f32 {
+    life_fraction_over(t, t.motion.toast_idle, elapsed)
+}
+
+/// [`life_fraction`] generalized over the rest span: `rest_ms` replaces
+/// `motion.toast_idle` as the countdown's length, matching
+/// [`toast_alpha_over`]'s `rest_ms`. Feed both the same `rest_ms` (a
+/// `Notify` call's own `expire_timeout`) so the card's fade and its life
+/// rule stay in step.
+pub fn life_fraction_over(t: &Theme, rest_ms: u32, elapsed: Duration) -> f32 {
     let in_dur = Duration::from_millis(t.motion.toast_in.into());
-    let idle_dur = Duration::from_millis(t.motion.toast_idle.into());
+    let idle_dur = Duration::from_millis(rest_ms.into());
 
     if elapsed < in_dur {
         1.0
     } else if elapsed < in_dur + idle_dur {
         let idle_elapsed = elapsed.saturating_sub(in_dur);
-        1.0 - fraction(idle_elapsed, t.motion.toast_idle)
+        1.0 - fraction(idle_elapsed, rest_ms)
     } else {
         0.0
     }
@@ -190,6 +226,103 @@ mod tests {
             life_fraction(&t, in_dur + idle_dur + out_dur + Duration::from_secs(1)),
             0.0
         );
+    }
+
+    #[test]
+    fn ease_out_boundaries_and_shape() {
+        assert_eq!(ease_out(0.0), 0.0);
+        assert_eq!(ease_out(1.0), 1.0);
+        // Ease-out starts fast: at the midpoint it's already past halfway.
+        assert!(ease_out(0.5) > 0.5);
+        // Out-of-range input clamps rather than extrapolating.
+        assert_eq!(ease_out(-1.0), 0.0);
+        assert_eq!(ease_out(2.0), 1.0);
+    }
+
+    #[test]
+    fn ease_out_is_monotonic() {
+        let mut last = ease_out(0.0);
+        for i in 1..=20 {
+            let f = i as f32 / 20.0;
+            let now = ease_out(f);
+            assert!(now >= last, "not rising at f={f}: {now} < {last}");
+            last = now;
+        }
+    }
+
+    #[test]
+    fn toast_alpha_over_matches_toast_alpha_for_a_default_rest_span() {
+        let t = theme();
+        let total = Duration::from_millis(
+            u64::from(t.motion.toast_in)
+                + u64::from(t.motion.toast_idle)
+                + u64::from(t.motion.toast_out),
+        );
+        for ms in [0, 100, 349, 350, 1000, 5350, 6000, 6350, 7000] {
+            let elapsed = Duration::from_millis(ms).min(total + Duration::from_secs(1));
+            assert_eq!(
+                toast_alpha_over(&t, t.motion.toast_idle, elapsed),
+                toast_alpha(&t, elapsed)
+            );
+        }
+    }
+
+    #[test]
+    fn toast_alpha_over_entrance_eases_out() {
+        let t = theme();
+        let in_dur = Duration::from_millis(t.motion.toast_in.into());
+        let mid = toast_alpha_over(&t, t.motion.toast_idle, in_dur / 2);
+        assert_eq!(mid, ease_out(fraction(in_dur / 2, t.motion.toast_in)));
+    }
+
+    #[test]
+    fn toast_alpha_over_shorter_rest_ends_the_fade_earlier() {
+        let t = theme();
+        let in_dur = Duration::from_millis(t.motion.toast_in.into());
+        let out_dur = Duration::from_millis(t.motion.toast_out.into());
+
+        // A 1000ms rest span, instead of the default 5000ms, finishes the
+        // whole envelope 4s sooner: fully transparent at 2.35s rather than
+        // 6.35s.
+        let rest_ms = 1000;
+        let short_total = in_dur + Duration::from_millis(rest_ms.into()) + out_dur;
+        assert_eq!(toast_alpha_over(&t, rest_ms, short_total), 0.0);
+
+        // At that same elapsed time, the default (5000ms) rest span is
+        // still mid-idle, fully opaque.
+        assert_eq!(toast_alpha(&t, short_total), 1.0);
+    }
+
+    #[test]
+    fn life_fraction_over_matches_life_fraction_for_a_default_rest_span() {
+        let t = theme();
+        let total = Duration::from_millis(
+            u64::from(t.motion.toast_in)
+                + u64::from(t.motion.toast_idle)
+                + u64::from(t.motion.toast_out),
+        );
+        for ms in [0, 100, 349, 350, 1000, 5350, 6000, 6350, 7000] {
+            let elapsed = Duration::from_millis(ms).min(total + Duration::from_secs(1));
+            assert_eq!(
+                life_fraction_over(&t, t.motion.toast_idle, elapsed),
+                life_fraction(&t, elapsed)
+            );
+        }
+    }
+
+    #[test]
+    fn life_fraction_over_shorter_rest_drains_earlier() {
+        let t = theme();
+        let in_dur = Duration::from_millis(t.motion.toast_in.into());
+
+        let rest_ms = 1000;
+        let short_idle_end = in_dur + Duration::from_millis(rest_ms.into());
+        assert_eq!(life_fraction_over(&t, rest_ms, short_idle_end), 0.0);
+
+        // The default (5000ms) rest span still has most of its life left at
+        // that same elapsed time.
+        let default_remaining = life_fraction(&t, short_idle_end);
+        assert!(default_remaining > 0.0);
     }
 
     #[test]

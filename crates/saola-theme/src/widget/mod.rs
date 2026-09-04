@@ -201,6 +201,28 @@ pub fn empty_state<'a, M: 'a>(t: &Theme, s: Surface, message: &'a str) -> Elemen
     .into()
 }
 
+/// [`empty_state`]'s tertiary "nothing here" text, laid out as a fixed-height
+/// row instead of a Fill×Fill centered box: [`quiet_row`]'s row mechanics
+/// (through [`list_row_container`], `sizes.list_row` height, width `Fill`,
+/// text vertically centered, no added left padding — `quiet_row` itself adds
+/// none) carrying `empty_state`'s text treatment.
+///
+/// Exists for layer-shell surfaces that declare their height before layout
+/// and so cannot give `empty_state` the Fill×Fill space it needs to center
+/// in — a notification centre or popover list with nothing to show still has
+/// to report one fixed-height row, not stretch to claim the whole surface.
+pub fn empty_state_row<'a, M: 'a>(t: &Theme, s: Surface, message: &'a str) -> Element<'a, M> {
+    list_row_container(
+        t,
+        text_widget(message)
+            .size(t.typography.size.secondary)
+            .font(ui_font_regular(t))
+            .color(t.on(s).tertiary.into_iced()),
+    )
+    .width(Fill)
+    .into()
+}
+
 /// A section heading for a sidebar or settings group: `sizes.label`-sized
 /// mono-medium text in the `tertiary` role ([`text::label`]), padded
 /// `sizes.pill_gap` all round so it holds its own band in a list.
@@ -310,6 +332,37 @@ pub fn pill_button<'a, M: Clone + 'a>(
     on_press: Option<M>,
     emphasized: bool,
 ) -> Element<'a, M> {
+    pill_button_faded(t, s, c, label, on_press, emphasized, 1.0)
+}
+
+/// [`pill_button`] at `alpha` opacity: identical geometry, styled with
+/// [`style::button::emphasis_faded`] instead of [`style::button::emphasis`].
+/// [`pill_button`] is the thin `alpha: 1.0` wrapper over this function.
+///
+/// The label needs no separate fading here: this constructor never sets a
+/// `.color(...)` on the text, so it always takes the button style's
+/// `text_color` — which `emphasis_faded` already scales by `alpha` — the
+/// same way [`pill_button`]'s label rides `emphasis`'s color today.
+///
+/// `alpha` is clamped to `0.0..=1.0` (a non-finite value reads as `1.0`) by
+/// `emphasis_faded`.
+///
+/// ```no_run
+/// use saola_theme::{widget, Chrome, Surface, Theme};
+///
+/// let t = Theme::saola();
+/// let _fading_save: iced::Element<'_, ()> =
+///     widget::pill_button_faded(&t, Surface::Paper, Chrome::Window, "Save", Some(()), true, 0.5);
+/// ```
+pub fn pill_button_faded<'a, M: Clone + 'a>(
+    t: &Theme,
+    s: Surface,
+    c: Chrome,
+    label: &'a str,
+    on_press: Option<M>,
+    emphasized: bool,
+    alpha: f32,
+) -> Element<'a, M> {
     let content = centered(
         text_widget(label)
             .font(ui_font(t))
@@ -318,7 +371,7 @@ pub fn pill_button<'a, M: Clone + 'a>(
     button(content)
         .height(t.sizes.hit_target_bar)
         .padding([0.0, t.paddings.pill_button[1]])
-        .style(style::button::emphasis(t, s, c, emphasized))
+        .style(style::button::emphasis_faded(t, s, c, emphasized, alpha))
         .on_press_maybe(on_press)
         .into()
 }
@@ -994,12 +1047,16 @@ mod tests {
         let _: iced::widget::ProgressBar<'_> = progress_rule(&t, s, 0.4);
         let _: Element<'_, ()> = quiet_row(&t, s, "no backend");
         let _: Element<'_, ()> = empty_state(&t, s, "This folder is empty");
+        let _: Element<'_, ()> = empty_state_row(&t, s, "No notifications");
         let _: Element<'_, ()> = section_label(&t, s, "PLACES");
         let _: Element<'_, ()> = footer_strip(&t, s, hairline(&t, s));
         let _: Element<'_, ()> = swatch(24.0, 8.0, style::container::badge(&t));
         let _: Element<'_, ()> = dot(6.0, style::container::badge(&t));
         let _: Element<'_, ()> = pill_button(&t, s, Chrome::Shell, "Save", Some(()), true);
         let _: Element<'_, ()> = pill_button(&t, s, Chrome::Window, "Save", None, false);
+        let _: Element<'_, ()> =
+            pill_button_faded(&t, s, Chrome::Shell, "Save", Some(()), true, 0.5);
+        let _: Element<'_, ()> = pill_button_faded(&t, s, Chrome::Window, "Save", None, false, 0.0);
         let _: Element<'_, ()> = icon_button(
             &t,
             s,
@@ -1117,6 +1174,127 @@ mod tests {
                         iced::widget::button::Status::Active,
                     );
                     assert_eq!(segment_tint(&t, s, c, is_selected), style.text_color);
+                }
+            }
+        }
+    }
+
+    /// [`style::container::notification_card_urgent`]'s `alpha` clamp and
+    /// fade: `1.0` matches [`style::container::notification_card`]'s own
+    /// background/text/shadow (plus a full-opacity ring), `0.0` makes every
+    /// painted color fully transparent, and a non-finite `alpha` clamps to
+    /// `1.0` rather than propagating `NaN`.
+    #[test]
+    fn notification_card_urgent_alpha_clamps_and_fades_every_color() {
+        let t = Theme::saola();
+        let iced_theme = iced::Theme::Light;
+
+        let full = style::container::notification_card_urgent(&t, 1.0)(&iced_theme);
+        let plain_card = style::container::notification_card(&t, 1.0)(&iced_theme);
+        assert_eq!(full.background, plain_card.background);
+        assert_eq!(full.text_color, plain_card.text_color);
+        assert_eq!(full.shadow, plain_card.shadow);
+        assert_eq!(
+            full.border.color,
+            t.palette.accent.into_iced(),
+            "alpha 1.0 keeps the ring at full opacity"
+        );
+
+        let faded = style::container::notification_card_urgent(&t, 0.0)(&iced_theme);
+        assert_eq!(faded.border.color.a, 0.0);
+        assert_eq!(faded.shadow.color.a, 0.0);
+        match faded.background {
+            Some(iced::Background::Color(c)) => assert_eq!(c.a, 0.0),
+            other => panic!("expected a solid background, got {other:?}"),
+        }
+
+        let nan = style::container::notification_card_urgent(&t, f32::NAN)(&iced_theme);
+        assert_eq!(nan, full, "NaN alpha clamps to 1.0, same as unfaded");
+    }
+
+    /// [`style::notification::life_rule`] and
+    /// [`style::notification::icon_tile`]'s `alpha` clamp and fade: `0.0`
+    /// makes every painted color fully transparent, and a non-finite `alpha`
+    /// clamps to `1.0`.
+    #[test]
+    fn notification_life_rule_and_icon_tile_alpha_clamp_and_fade() {
+        let t = Theme::saola();
+        let iced_theme = iced::Theme::Light;
+
+        let rule_full = style::notification::life_rule(&t, 1.0)(&iced_theme);
+        let rule_nan = style::notification::life_rule(&t, f32::NAN)(&iced_theme);
+        assert_eq!(rule_full, rule_nan, "NaN clamps to 1.0");
+        let rule_zero = style::notification::life_rule(&t, 0.0)(&iced_theme);
+        let iced::Background::Color(track) = rule_zero.background else {
+            panic!("expected a solid track");
+        };
+        assert_eq!(track.a, 0.0);
+        let iced::Background::Color(bar) = rule_zero.bar else {
+            panic!("expected a solid bar");
+        };
+        assert_eq!(bar.a, 0.0);
+
+        let tile_full = style::notification::icon_tile(&t, 1.0)(&iced_theme);
+        let tile_nan = style::notification::icon_tile(&t, f32::NAN)(&iced_theme);
+        assert_eq!(tile_full, tile_nan, "NaN clamps to 1.0");
+        let tile_zero = style::notification::icon_tile(&t, 0.0)(&iced_theme);
+        assert_eq!(tile_zero.text_color.map(|c| c.a), Some(0.0));
+        match tile_zero.background {
+            Some(iced::Background::Color(bg)) => assert_eq!(bg.a, 0.0),
+            other => panic!("expected a solid tile background, got {other:?}"),
+        }
+    }
+
+    /// [`style::button::rest_faded`] and [`style::button::emphasis_faded`]'s
+    /// `alpha` clamp and fade, across every surface/chrome combination and
+    /// every [`button::Status`](iced::widget::button::Status): `1.0`
+    /// reproduces [`style::button::rest`]/[`style::button::emphasis`]
+    /// exactly (they are thin wrappers, not parallel recipes), `0.0` fades
+    /// both the background and the label to fully transparent — including
+    /// `Status::Disabled` — and a non-finite `alpha` clamps to `1.0`.
+    #[test]
+    fn button_rest_faded_and_emphasis_faded_alpha_clamp_and_fade() {
+        let t = Theme::saola();
+        let iced_theme = iced::Theme::Light;
+        let statuses = [
+            iced::widget::button::Status::Active,
+            iced::widget::button::Status::Hovered,
+            iced::widget::button::Status::Pressed,
+            iced::widget::button::Status::Disabled,
+        ];
+
+        for s in [Surface::Ink, Surface::Paper] {
+            for c in [Chrome::Shell, Chrome::Window] {
+                let rest = style::button::rest(&t, s, c);
+                let rest_faded_full = style::button::rest_faded(&t, s, c, 1.0);
+                let rest_faded_nan = style::button::rest_faded(&t, s, c, f32::NAN);
+                let rest_faded_zero = style::button::rest_faded(&t, s, c, 0.0);
+                for status in statuses {
+                    let plain = rest(&iced_theme, status);
+                    assert_eq!(rest_faded_full(&iced_theme, status), plain);
+                    assert_eq!(rest_faded_nan(&iced_theme, status), plain);
+                    let zero = rest_faded_zero(&iced_theme, status);
+                    assert_eq!(zero.text_color.a, 0.0);
+                    if let Some(iced::Background::Color(bg)) = zero.background {
+                        assert_eq!(bg.a, 0.0);
+                    }
+                }
+
+                for emphasized in [false, true] {
+                    let emphasis = style::button::emphasis(&t, s, c, emphasized);
+                    let faded_full = style::button::emphasis_faded(&t, s, c, emphasized, 1.0);
+                    let faded_nan = style::button::emphasis_faded(&t, s, c, emphasized, f32::NAN);
+                    let faded_zero = style::button::emphasis_faded(&t, s, c, emphasized, 0.0);
+                    for status in statuses {
+                        let plain = emphasis(&iced_theme, status);
+                        assert_eq!(faded_full(&iced_theme, status), plain);
+                        assert_eq!(faded_nan(&iced_theme, status), plain);
+                        let zero = faded_zero(&iced_theme, status);
+                        assert_eq!(zero.text_color.a, 0.0);
+                        if let Some(iced::Background::Color(bg)) = zero.background {
+                            assert_eq!(bg.a, 0.0);
+                        }
+                    }
                 }
             }
         }

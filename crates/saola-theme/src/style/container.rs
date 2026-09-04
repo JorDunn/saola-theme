@@ -501,3 +501,37 @@ pub fn notification_card(t: &Theme, alpha: f32) -> impl Fn(&iced::Theme) -> Styl
         ..surface(ink, text, radius)
     }
 }
+
+/// The §6 **urgent** notification card at `alpha` opacity: [`notification_card`]'s
+/// exact recipe (opaque ink, `on_ink.primary` text, `radii.card`, popover
+/// shadow, every color alpha-scaled) plus the accent ring
+/// ([`super::accent_ring`]'s `sizes.ring` terracotta border), ring color
+/// scaled by `alpha` too.
+///
+/// Style guide §5 line 309: an urgent card carries no life rule and never
+/// auto-dismisses — `alpha` exists only for the slide-in *entrance*, never a
+/// countdown fade-out, unlike [`notification_card`]'s toast which fades both
+/// ways. This is the ink shell twin of [`card_urgent`] the same way
+/// [`notification_card`] is [`card`]'s — leave [`card_urgent`] itself
+/// untouched, it styles the in-window (paper) urgent card, not a toast.
+pub fn notification_card_urgent(t: &Theme, alpha: f32) -> impl Fn(&iced::Theme) -> Style + Clone {
+    let alpha = if alpha.is_finite() {
+        alpha.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let ink = t.palette.ink.with_opacity(alpha);
+    let text = t.on_ink.primary.with_opacity(alpha);
+    let radius = t.radii.card;
+    let shadow = t.shadows.popover.with_opacity(alpha);
+    let ring = Border {
+        color: t.palette.accent.with_opacity(alpha),
+        width: t.sizes.ring,
+        radius: radius.into(),
+    };
+    move |_| Style {
+        border: ring,
+        shadow,
+        ..surface(ink, text, radius)
+    }
+}
