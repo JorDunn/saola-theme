@@ -109,8 +109,12 @@
     "dashWidthStub": 10,
     "dashGap": 5,
     "popoverTop": 72,
+    "shellEdgeGap": 26,
     "popoverWidth": 440,
     "notificationCentreWidth": 460,
+    "notificationCentrePadding": 20,
+    "notificationCentreGroupGap": 10,
+    "notificationCentreRow": 38,
     "launcherWidth": 640,
     "notificationCardWidth": 440,
     "listRow": 38,
@@ -136,6 +140,7 @@
   },
 
   "motion": {
+    "frame": 32,
     "hover": { "duration": 140, "easing": "ease" },
     "popover": { "duration": 160, "easing": "ease-out", "from": "translateY(-6px) scale(0.985)" },
     "wake": { "duration": 450, "easing": "ease" },

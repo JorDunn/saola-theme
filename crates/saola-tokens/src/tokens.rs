@@ -152,6 +152,11 @@ impl Default for Radii {
 pub struct Sizes {
     pub panel_pill: f32,
     pub panel_bar: f32,
+    /// The panel's own island margin from the screen edge. Other shell
+    /// surfaces (popovers, toasts, the notification centre) use
+    /// [`Sizes::shell_edge_gap`] instead — the two happen to share a value
+    /// today, but `panel_margin_islands` names the panel's margin, not a
+    /// generic one, and live consumers already read it under that name.
     pub panel_margin_islands: f32,
     pub panel_margin_ledger: f32,
     /// Gap between free-standing chrome surfaces: panel islands over the
@@ -177,10 +182,28 @@ pub struct Sizes {
     pub dash_width_stub: f32,
     pub dash_gap: f32,
     pub popover_top: f32,
+    /// Inset of a shell surface from the screen edge it hugs — popovers,
+    /// toasts and the notification centre (style guide §6, "26px from the
+    /// relevant edge"). See [`Sizes::panel_margin_islands`] for the panel's
+    /// own, differently-named, margin.
+    pub shell_edge_gap: f32,
     pub popover_width: f32,
     /// Content padding inside a popover panel (spec §6: "20–22px padding").
     pub popover_padding: f32,
     pub notification_centre_width: f32,
+    /// Outer padding of the notification centre surface — the canonical
+    /// centre rhythm (style guide §6), so a second consumer of the same
+    /// shape (a panel indicator popover, a settings preview) composes it
+    /// identically instead of reinventing the number.
+    pub notification_centre_padding: f32,
+    /// Gap between application groups inside the notification centre — part
+    /// of the same canonical centre rhythm as
+    /// [`Sizes::notification_centre_padding`].
+    pub notification_centre_group_gap: f32,
+    /// Height of one card/entry row inside the notification centre — part
+    /// of the same canonical centre rhythm as
+    /// [`Sizes::notification_centre_padding`].
+    pub notification_centre_row: f32,
     pub launcher_width: f32,
     pub notification_card_width: f32,
     /// Menu/list row height (tray menus, popover lists).
@@ -338,9 +361,13 @@ impl Default for Sizes {
             dash_width_stub: 10.0,
             dash_gap: 5.0,
             popover_top: 72.0,
+            shell_edge_gap: 26.0,
             popover_width: 440.0,
             popover_padding: 20.0,
             notification_centre_width: 460.0,
+            notification_centre_padding: 20.0,
+            notification_centre_group_gap: 10.0,
+            notification_centre_row: 38.0,
             launcher_width: 640.0,
             notification_card_width: 440.0,
             list_row: 38.0,
@@ -478,6 +505,10 @@ pub struct Motion {
     pub toast_out: u32,
     pub toast_total: u32,
     pub toast_max_stack: u8,
+    /// Redraw cadence for animated shell surfaces (toast fade, life rule),
+    /// in milliseconds. Consumers tick at this interval instead of each
+    /// choosing one.
+    pub frame: u32,
     /// One full breath of a session-status semaphore dot, in milliseconds:
     /// the time for a breathing dot to fade down and back up *once*
     /// (dim → bright → dim), not a half cycle. The panel drives it as a
@@ -519,6 +550,7 @@ impl Default for Motion {
             toast_out: 1000,
             toast_total: 6350,
             toast_max_stack: 3,
+            frame: 32,
             breathe: 2400,
             breathe_min_opacity: 0.45,
             flash: 150,

@@ -269,6 +269,9 @@ Short, and only where it carries meaning.
 | Session status breath | `2.4s ease-in-out` loop, opacity `0.45 → 1 → 0.45` |
 | Window-title marquee (opt-in, off by default) | `24px/s linear` sweep, `2s` dwell at each end — see below |
 
+An animated surface redraws on `motion.frame` (32ms). Use this cadence for every
+animated shell surface. Do not pick a new redraw interval per surface.
+
 ### The session status breath
 
 The only looping animation in the shell proper. A `status-working` or `status-subagents`
@@ -364,8 +367,8 @@ and lightened metadata (`rgba(255,255,240,.75)`).
 ### Popover
 
 Opaque ink, `30px` radius, `box-shadow: 0 18px 48px rgba(12,10,0,.5)`, 20–22px padding.
-Anchored 72px from the screen top, 26px from the relevant edge. **Only one popover open
-at a time** — opening one closes the others.
+Anchored 72px from the screen top, 26px from the relevant edge (`sizes.shell_edge_gap`).
+**Only one popover open at a time** — opening one closes the others.
 
 Popovers grow **downward** from their trigger when the trigger is near the top of the
 screen, and must never overlap the control that opened them.
@@ -381,9 +384,17 @@ from an app already on screen replaces its card and resets the clock.
 
 ### Notification centre
 
-460px, anchored 72px from the top and 26px from the right, `max-height: calc(100% - 98px)`
-with the list scrolling. **It hugs its content and only reaches full height when there is
-enough to show.** Grouped by application, each group collapsible, with a count chip.
+460px, anchored 72px from the top and 26px from the right (`sizes.shell_edge_gap`),
+`max-height: calc(100% - 98px)` with the list scrolling. **It hugs its content and only
+reaches full height when there is enough to show.** Grouped by application, each group
+collapsible, with a count chip.
+
+The canonical vertical rhythm uses three tokens. `sizes.notification_centre_padding`
+sets the outer padding. `sizes.notification_centre_group_gap` sets the gap between app
+groups. `sizes.notification_centre_row` sets the height of one card or entry row. A
+second consumer of this shape — a panel indicator popover, or a settings preview —
+should use the same three tokens. This keeps the two surfaces in step. The header row
+holds the title and the do-not-disturb toggle. It is `sizes.hit_target_bar` tall.
 
 ---
 
