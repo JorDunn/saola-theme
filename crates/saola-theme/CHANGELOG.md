@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.13.0...saola-theme-v0.14.0) - 2026-09-06
+
+### Added
+
+- *(saola-theme)* add Power, RotateCw, Moon and UserRound icons for the greeter
+
+### Changed
+
+- *(saola-theme)* [**breaking**] bound the avatar file read in Avatar::resolve
+- *(saola-theme)* [**breaking**] alpha-aware notification chrome, rest-span toast motion, faded pills
+
 ## [0.13.0](https://github.com/JorDunn/saola-theme/compare/saola-theme-v0.12.0...saola-theme-v0.13.0) - 2026-08-14
 
 ### Changed
