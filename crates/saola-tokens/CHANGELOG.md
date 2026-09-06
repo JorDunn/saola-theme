@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0](https://github.com/JorDunn/saola-theme/compare/saola-tokens-v0.7.0...saola-tokens-v0.8.0) - 2026-09-06
+
+### Added
+
+- *(saola-tokens)* add shell_edge_gap, frame and notification-centre rhythm tokens
+
 ## [0.7.0](https://github.com/JorDunn/saola-theme/compare/saola-tokens-v0.6.0...saola-tokens-v0.7.0) - 2026-08-14
 
 ### Changed
