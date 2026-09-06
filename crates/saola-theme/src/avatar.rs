@@ -27,7 +27,23 @@
 //! what the lockscreen does: decode the bytes themselves (it uses the
 //! `image` crate) and hand this module a `Handle::from_rgba` — see
 //! saola-lockscreen's `wallpaper::decode`.
+//!
+//! # Bounded read
+//!
+//! Every candidate [`Avatar::resolve`] reads is user-controlled — the
+//! configured path comes from AccountsService, and `~/.face` is whatever
+//! sits at that name in the target account's home directory — and both the
+//! greeter and the lockscreen resolve it *before* the user has authenticated.
+//! A symlink or bind-mount to `/dev/zero` would read forever and exhaust
+//! memory; a FIFO would block the caller forever; stat-then-read has a
+//! TOCTOU window and stat alone does not distinguish a device node from a
+//! regular file anyway. So `resolve` takes a `max_bytes` cap and the read
+//! itself is bounded (see `read_bounded`) — an oversize or non-regular-file
+//! candidate is rejected without blocking or growing without limit. Callers
+//! with no stronger opinion should pass [`Avatar::MAX_BYTES_DEFAULT`].
 
+use std::fs::File;
+use std::io::Read as _;
 use std::path::{Path, PathBuf};
 
 use iced::widget::image::Handle;
@@ -67,6 +83,10 @@ pub struct Resolution {
 }
 
 impl Avatar {
+    /// Recommended `max_bytes` for [`Avatar::resolve`]: 16 MiB, generous for
+    /// any real avatar file.
+    pub const MAX_BYTES_DEFAULT: u64 = 16 * 1024 * 1024;
+
     /// Resolve the avatar per §7's order: config override, then
     /// `$HOME/.face`, then an initials disc. Called once, at boot — the
     /// lockscreen calls its original from `Lockscreen::boot`; the greeter
@@ -79,6 +99,13 @@ impl Avatar {
     /// `std::env::var_os("HOME")`'s result; `None` when it is unset) so the
     /// precedence stays unit-testable — see [`avatar_candidates`].
     ///
+    /// `max_bytes` bounds every candidate read (see the module's "Bounded
+    /// read" section) — [`Avatar::MAX_BYTES_DEFAULT`] is the recommended
+    /// value absent a stronger opinion. A candidate over the cap, or not a
+    /// regular file, is treated exactly like an unreadable one: it falls
+    /// through to the next candidate, and if it was the configured path, it
+    /// is reported in `configured_failed`.
+    ///
     /// `decode` turns one candidate's bytes into a [`Handle`], or `None` for
     /// "could not decode". Supply a real decoder (see the module docs on why
     /// `Handle::from_rgba` and consumer-side decoding, per
@@ -90,14 +117,13 @@ impl Avatar {
         configured: Option<&Path>,
         display_name: &str,
         home: Option<&Path>,
+        max_bytes: u64,
         mut decode: impl FnMut(&[u8]) -> Option<Handle>,
     ) -> Resolution {
         let mut configured_failed = None;
 
         for candidate in avatar_candidates(configured, home) {
-            let handle = std::fs::read(&candidate)
-                .ok()
-                .and_then(|bytes| decode(&bytes));
+            let handle = read_bounded(&candidate, max_bytes).and_then(|bytes| decode(&bytes));
             match handle {
                 Some(handle) => {
                     return Resolution {
@@ -120,6 +146,45 @@ impl Avatar {
             configured_failed,
         }
     }
+}
+
+/// Read `path` only if it is a regular file of at most `max_bytes` bytes.
+///
+/// Used by [`Avatar::resolve`] because every candidate path is
+/// user-controlled and read before login (see the module's "Bounded read"
+/// section) — a device node, FIFO, or oversize file must never be read to
+/// completion.
+fn read_bounded(path: &Path, max_bytes: u64) -> Option<Vec<u8>> {
+    // Open first, then stat the open handle (fstat, not a path-based stat):
+    // a path-based check followed by a separate read has a TOCTOU window
+    // where the path could be swapped out from under it (e.g. for a symlink
+    // to a device file). Stat-ing the handle we're about to read from closes
+    // that window.
+    let file = File::open(path).ok()?;
+    let metadata = file.metadata().ok()?;
+
+    // Reject anything that isn't a plain file: this is what actually keeps
+    // out FIFOs, sockets, and device nodes (a stat-only check cannot tell
+    // `/dev/zero` from a real file by size alone, since some device nodes
+    // report a size of zero). Oversize files are skipped here without
+    // reading a single byte of them.
+    if !metadata.is_file() || metadata.len() > max_bytes {
+        return None;
+    }
+
+    let len = metadata.len() as usize;
+    let mut buf = Vec::with_capacity(len);
+    // `take(max_bytes + 1)` bounds the read regardless of what the fstat
+    // said — if the file grew after the fstat and before this read, the
+    // reader stops one byte past the cap instead of streaming without
+    // limit, and the length check below catches the mismatch.
+    file.take(max_bytes + 1).read_to_end(&mut buf).ok()?;
+
+    if buf.len() as u64 > max_bytes {
+        return None;
+    }
+
+    Some(buf)
 }
 
 /// The ordered avatar candidates. Pure function of its inputs (`$HOME` is a
@@ -264,7 +329,13 @@ mod tests {
 
     #[test]
     fn no_candidates_resolves_to_initials_with_no_warning() {
-        let resolution = Avatar::resolve(None, "Jordan Dunn", None, accept_all);
+        let resolution = Avatar::resolve(
+            None,
+            "Jordan Dunn",
+            None,
+            Avatar::MAX_BYTES_DEFAULT,
+            accept_all,
+        );
         assert!(matches!(resolution.avatar, Avatar::Initials(ref i) if i == "JD"));
         assert_eq!(resolution.configured_failed, None);
     }
@@ -275,7 +346,13 @@ mod tests {
     #[test]
     fn a_failed_configured_path_is_reported_and_falls_through() {
         let configured = PathBuf::from("/nonexistent/avatar.png");
-        let resolution = Avatar::resolve(Some(&configured), "Jordan Dunn", None, accept_all);
+        let resolution = Avatar::resolve(
+            Some(&configured),
+            "Jordan Dunn",
+            None,
+            Avatar::MAX_BYTES_DEFAULT,
+            accept_all,
+        );
         assert!(matches!(resolution.avatar, Avatar::Initials(_)));
         assert_eq!(resolution.configured_failed, Some(configured));
     }
@@ -288,6 +365,7 @@ mod tests {
             None,
             "Jordan Dunn",
             Some(Path::new("/nonexistent-home")),
+            Avatar::MAX_BYTES_DEFAULT,
             accept_all,
         );
         assert!(matches!(resolution.avatar, Avatar::Initials(_)));
@@ -301,7 +379,13 @@ mod tests {
     #[test]
     fn a_readable_configured_file_becomes_a_photo() {
         let readable = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
-        let resolution = Avatar::resolve(Some(&readable), "Jordan Dunn", None, accept_all);
+        let resolution = Avatar::resolve(
+            Some(&readable),
+            "Jordan Dunn",
+            None,
+            Avatar::MAX_BYTES_DEFAULT,
+            accept_all,
+        );
         assert!(matches!(resolution.avatar, Avatar::Photo(_)));
         assert_eq!(resolution.configured_failed, None);
     }
@@ -311,8 +395,81 @@ mod tests {
     #[test]
     fn an_undecodable_configured_file_falls_through_with_a_warning() {
         let readable = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
-        let resolution = Avatar::resolve(Some(&readable), "Jordan Dunn", None, |_bytes| None);
+        let resolution = Avatar::resolve(
+            Some(&readable),
+            "Jordan Dunn",
+            None,
+            Avatar::MAX_BYTES_DEFAULT,
+            |_bytes| None,
+        );
         assert!(matches!(resolution.avatar, Avatar::Initials(_)));
         assert_eq!(resolution.configured_failed, Some(readable));
+    }
+
+    // ---- bounded read ------------------------------------------------------
+
+    /// A configured file over the cap must fall through *without* the
+    /// decoder ever seeing its bytes — the whole point of the bound is that
+    /// an oversize (or unbounded) candidate is never read to completion.
+    #[test]
+    fn an_oversize_configured_file_falls_through_with_a_warning() {
+        let cap = 64u64;
+        let path = std::env::temp_dir().join(format!(
+            "saola-theme-avatar-{}-an_oversize_configured_file_falls_through_with_a_warning",
+            std::process::id()
+        ));
+        std::fs::write(&path, vec![0u8; (cap + 1) as usize]).expect("write temp file");
+
+        let calls = std::cell::Cell::new(0u32);
+        let resolution = Avatar::resolve(Some(&path), "Jordan Dunn", None, cap, |_bytes| {
+            calls.set(calls.get() + 1);
+            Some(Handle::from_rgba(1, 1, vec![0u8; 4]))
+        });
+
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(
+            calls.get(),
+            0,
+            "decoder must not be called for an oversize file"
+        );
+        assert!(matches!(resolution.avatar, Avatar::Initials(_)));
+        assert_eq!(resolution.configured_failed, Some(path));
+    }
+
+    /// A file at exactly the cap is still read in full and decoded.
+    #[test]
+    fn a_file_at_exactly_the_cap_is_read() {
+        let cap = 64u64;
+        let path = std::env::temp_dir().join(format!(
+            "saola-theme-avatar-{}-a_file_at_exactly_the_cap_is_read",
+            std::process::id()
+        ));
+        std::fs::write(&path, vec![0u8; cap as usize]).expect("write temp file");
+
+        let seen_len = std::cell::Cell::new(None::<usize>);
+        let resolution = Avatar::resolve(Some(&path), "Jordan Dunn", None, cap, |bytes| {
+            seen_len.set(Some(bytes.len()));
+            Some(Handle::from_rgba(1, 1, vec![0u8; 4]))
+        });
+
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(seen_len.get(), Some(cap as usize));
+        assert!(matches!(resolution.avatar, Avatar::Photo(_)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn read_bounded_rejects_non_regular_files() {
+        assert!(read_bounded(Path::new("/dev/zero"), 64).is_none());
+        // A char device, not a regular file — rejected the same way even
+        // though it reads as empty rather than infinite.
+        assert!(read_bounded(Path::new("/dev/null"), 64).is_none());
+    }
+
+    #[test]
+    fn read_bounded_rejects_a_directory() {
+        assert!(read_bounded(Path::new(env!("CARGO_MANIFEST_DIR")), 64).is_none());
     }
 }
