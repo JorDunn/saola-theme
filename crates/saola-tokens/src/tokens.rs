@@ -273,6 +273,13 @@ pub struct Sizes {
     pub life_rule: f32,
     /// Lock/greeter avatar circle diameter (saola-lockscreen).
     pub avatar_lock: f32,
+    /// Glyph size for a placeholder avatar (`Icon::UserRound` inside the
+    /// `avatar_lock` disc; the greeter's "Not listed?" tile). Sized so the
+    /// glyph's visible figure carries about the same weight as two initials at
+    /// `typography.size.avatar_initials`. No design mock specifies this value
+    /// — it is a theme judgement, not a measurement; correct it here if a
+    /// greeter mock lands.
+    pub avatar_glyph: f32,
     /// Lock/greeter password field height. `design/saola-tokens.json` has no
     /// entry for this token — it was minted from consumer recon, not the
     /// JSON — so the authoritative value is the style guide's stated range,
@@ -404,6 +411,7 @@ impl Default for Sizes {
             icon_tile: 36.0,
             life_rule: 3.0,
             avatar_lock: 88.0,
+            avatar_glyph: 40.0,
             field_lock: 62.0,
             lock_stack_gap: 20.0,
             popover_separator_gap: 5.0,

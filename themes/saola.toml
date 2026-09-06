@@ -154,6 +154,7 @@ progress_girth = 6.0
 icon_tile = 36.0
 life_rule = 3.0
 avatar_lock = 88.0
+avatar_glyph = 40.0
 field_lock = 62.0
 lock_stack_gap = 20.0
 popover_separator_gap = 5.0

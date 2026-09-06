@@ -2043,10 +2043,12 @@ impl Gallery {
         .into()
     }
 
-    /// The §7 avatar composite, initials arm — the gallery bundles no photo
-    /// asset, and the initials disc is the part the design system owns end
-    /// to end (`initials_from` + `container::disc` + the
-    /// `avatar_initials`/`avatar_lock` tokens).
+    /// The §7 avatar composite, initials arm and placeholder arm — the
+    /// gallery bundles no photo asset, and the initials disc is the part
+    /// the design system owns end to end (`initials_from` +
+    /// `container::disc` + the `avatar_initials`/`avatar_lock` tokens). The
+    /// placeholder is `Icon::UserRound` in the same disc, used where the
+    /// greeter's "Not listed?" tile stands in for an account.
     fn avatar_row(&self) -> Element<'_, Message> {
         let t = &self.theme;
         let caption = convert::ColorExt::into_iced(t.on_ink.tertiary);
@@ -2059,6 +2061,16 @@ impl Gallery {
                     .size(t.typography.size.label)
                     .color(caption),
                 text("initials_from(\"Jordan Dunn\") → \"JD\"")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+            avatar::placeholder(t, t.sizes.avatar_lock),
+            column![
+                text(format!("avatar_glyph · {:.0}px", t.sizes.avatar_glyph))
+                    .size(t.typography.size.label)
+                    .color(caption),
+                text("Icon::UserRound — the greeter's \"Not listed?\" tile")
                     .size(t.typography.size.label)
                     .color(caption),
             ]

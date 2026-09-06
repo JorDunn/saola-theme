@@ -52,6 +52,7 @@ use iced::{ContentFit, Element};
 use saola_tokens::{Surface, Theme};
 
 use crate::convert::{ui_font, ColorExt};
+use crate::icon::{icon, Icon};
 use crate::style;
 
 /// §7's avatar, resolved once at boot (ported from saola-lockscreen's
@@ -268,6 +269,27 @@ pub fn view<'a, Message: 'a>(t: &Theme, avatar: &Avatar, size: f32) -> Element<'
     }
 }
 
+/// The placeholder avatar: `Icon::UserRound` centred in the same ink disc
+/// [`view`] draws for initials, `size` × `size` logical pixels. For a slot
+/// that has no account behind it — the greeter's "Not listed?" tile — so
+/// it lines up with the user tiles beside it. Not an [`Avatar`] variant
+/// because [`Avatar::resolve`] can never produce one: a real account always
+/// has at least initials.
+///
+/// The glyph is `sizes.avatar_glyph` in `on_ink.primary`, the disc's own
+/// text role, matching the initials arm of [`view`].
+pub fn placeholder<'a, Message: 'a>(t: &Theme, size: f32) -> Element<'a, Message> {
+    container(icon(
+        Icon::UserRound,
+        t.sizes.avatar_glyph,
+        t.on_ink.primary.into_iced(),
+    ))
+    .center_x(size)
+    .center_y(size)
+    .style(style::container::disc(t, Surface::Ink))
+    .into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -457,6 +479,15 @@ mod tests {
 
         assert_eq!(seen_len.get(), Some(cap as usize));
         assert!(matches!(resolution.avatar, Avatar::Photo(_)));
+    }
+
+    // ---- placeholder -------------------------------------------------------
+
+    /// `placeholder` just needs to build without panicking — an `Element`
+    /// can't be inspected much further than that.
+    #[test]
+    fn placeholder_builds() {
+        let _element = placeholder::<()>(&Theme::saola(), 88.0);
     }
 
     #[cfg(unix)]
