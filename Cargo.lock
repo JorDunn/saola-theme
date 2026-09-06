@@ -2770,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "saola-export-alacritty"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "saola-tokens",
  "serde",
@@ -2779,7 +2779,7 @@ dependencies = [
 
 [[package]]
 name = "saola-theme"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "iced",
  "saola-tokens",
@@ -2788,7 +2788,7 @@ dependencies = [
 
 [[package]]
 name = "saola-tokens"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "serde",
  "thiserror 2.0.19",
