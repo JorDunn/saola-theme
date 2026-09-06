@@ -122,6 +122,7 @@ notification_centre_width = 460.0
 notification_centre_padding = 20.0
 notification_centre_group_gap = 10.0
 notification_centre_row = 38.0
+notification_centre_card_gap = 4.0
 launcher_width = 640.0
 notification_card_width = 440.0
 list_row = 38.0

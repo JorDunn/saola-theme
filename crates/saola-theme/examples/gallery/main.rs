@@ -298,6 +298,9 @@ impl Gallery {
                 text("Rows, tiles & menus").size(t.typography.size.section_heading),
                 self.labeled_surface_row(primary, self.rows_column(primary)),
                 self.labeled_surface_row(secondary, self.rows_column(secondary)),
+                text("Bar row").size(t.typography.size.section_heading),
+                self.labeled_surface_row(primary, self.bar_row_specimen(primary)),
+                self.labeled_surface_row(secondary, self.bar_row_specimen(secondary)),
                 // The Stage 17 table specimen (the future saola-files
                 // detailed list view): an app-window widget like the rows
                 // above it, so it gets the paired ink/paper treatment.
@@ -1536,6 +1539,32 @@ impl Gallery {
         ]
         .spacing(16)
         .width(Fill)
+        .into()
+    }
+
+    /// `widget::bar_row_container` — the `hit_target_bar`-tall twin of
+    /// `list_row_container` above, for a control band rather than a list
+    /// row (style guide §6: the notification centre's header row is this
+    /// shape). A title on the left, a caption naming the height token on
+    /// the right.
+    fn bar_row_specimen(&self, s: Surface) -> Element<'_, Message> {
+        let t = &self.theme;
+        let caption = convert::ColorExt::into_iced(t.on(s).tertiary);
+
+        widget::bar_row_container(
+            t,
+            row![
+                widget::text::label(t, s, "Section title"),
+                text(format!(
+                    "bar_row_container · hit_target_bar {:.0}px",
+                    t.sizes.hit_target_bar
+                ))
+                .size(t.typography.size.label)
+                .color(caption),
+            ]
+            .spacing(t.sizes.island_gap)
+            .align_y(iced::Center),
+        )
         .into()
     }
 

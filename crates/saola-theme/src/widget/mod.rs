@@ -163,6 +163,21 @@ pub fn list_row_container<'a, M: 'a>(
     container(content).height(t.sizes.list_row).align_y(Center)
 }
 
+/// The bar-row envelope: the `sizes.hit_target_bar`-tall twin of
+/// [`list_row_container`], for a band that is a control row rather than a
+/// list row — the notification centre's header row (style guide §6: "It is
+/// `sizes.hit_target_bar` tall"), or any title band that sits above a list.
+/// Two pixels taller than a list row, on purpose. Pure geometry, like its
+/// twin: no `Surface`, paints nothing.
+pub fn bar_row_container<'a, M: 'a>(
+    t: &Theme,
+    content: impl Into<Element<'a, M>>,
+) -> Container<'a, M> {
+    container(content)
+        .height(t.sizes.hit_target_bar)
+        .align_y(Center)
+}
+
 /// A quiet single-line placeholder holding a [`list_row_container`] slot —
 /// the "backend absent" line that keeps a popover's fixed layout when a
 /// section has nothing to say. `sizes.bar`-sized text in the `secondary`
@@ -1036,6 +1051,14 @@ mod tests {
         assert!(segment_height(&t) > 0.0);
     }
 
+    /// [`bar_row_container`] is [`list_row_container`]'s `hit_target_bar`-tall
+    /// twin — two pixels taller than `list_row`, on purpose (style guide §6).
+    #[test]
+    fn bar_row_container_is_two_px_taller_than_list_row() {
+        let t = Theme::saola();
+        assert_eq!(t.sizes.hit_target_bar, t.sizes.list_row + 2.0);
+    }
+
     /// Every constructor builds without a renderer — a pure smoke test that
     /// the generics, lifetimes, and style plumbing line up.
     #[test]
@@ -1046,6 +1069,7 @@ mod tests {
         let _: Element<'_, ()> = separator(&t, s);
         let _: iced::widget::ProgressBar<'_> = progress_rule(&t, s, 0.4);
         let _: Element<'_, ()> = quiet_row(&t, s, "no backend");
+        let _: Element<'_, ()> = bar_row_container(&t, text_widget("Title")).into();
         let _: Element<'_, ()> = empty_state(&t, s, "This folder is empty");
         let _: Element<'_, ()> = empty_state_row(&t, s, "No notifications");
         let _: Element<'_, ()> = section_label(&t, s, "PLACES");

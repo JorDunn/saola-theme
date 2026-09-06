@@ -396,12 +396,20 @@ from an app already on screen replaces its card and resets the clock.
 reaches full height when there is enough to show.** Grouped by application, each group
 collapsible, with a count chip.
 
-The canonical vertical rhythm uses three tokens. `sizes.notification_centre_padding`
-sets the outer padding. `sizes.notification_centre_group_gap` sets the gap between app
-groups. `sizes.notification_centre_row` sets the height of one card or entry row. A
-second consumer of this shape — a panel indicator popover, or a settings preview —
-should use the same three tokens. This keeps the two surfaces in step. The header row
-holds the title and the do-not-disturb toggle. It is `sizes.hit_target_bar` tall.
+The canonical vertical rhythm uses four tokens. `sizes.notification_centre_padding`
+sets the outer vertical padding. `sizes.notification_centre_group_gap` sets the gap
+between app groups. `sizes.notification_centre_card_gap` sets the gap inside a group,
+between its header and its cards and between the cards. `sizes.notification_centre_row`
+sets the height of one card or entry row. A second consumer of this shape — a panel
+indicator popover, or a settings preview — should use the same four tokens. This keeps
+the two surfaces in step. The header row holds the title and the do-not-disturb toggle.
+It is `sizes.hit_target_bar` tall; `widget::bar_row_container` is that band.
+
+The horizontal padding is not a centre token. It is `sizes.island_gap`, by derivation:
+the centre is `sizes.notification_centre_width` wide, a card is
+`sizes.notification_card_width` wide, and the difference is two island gaps. A token
+that pinned the number would drift if either width changed, so the recipe is stated
+here instead.
 
 ---
 

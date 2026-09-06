@@ -204,10 +204,19 @@ pub struct Sizes {
     /// of the same canonical centre rhythm as
     /// [`Sizes::notification_centre_padding`].
     pub notification_centre_row: f32,
+    /// Gap between an application group's header row and its first card,
+    /// and between the cards of that group — the inside of the group, where
+    /// [`Sizes::notification_centre_group_gap`] is the outside. Part of the
+    /// same canonical centre rhythm as [`Sizes::notification_centre_padding`].
+    pub notification_centre_card_gap: f32,
     pub launcher_width: f32,
     pub notification_card_width: f32,
     /// Menu/list row height (tray menus, popover lists).
     pub list_row: f32,
+    /// Height of a bar-shaped hit target: the segmented control, and a title
+    /// or header band such as the notification centre's header row (style
+    /// guide §6). Two pixels taller than [`Sizes::list_row`], on purpose — it
+    /// is a control band, not a list row.
     pub hit_target_bar: f32,
     pub hit_target_touch: f32,
     pub icon_bar: f32,
@@ -375,6 +384,7 @@ impl Default for Sizes {
             notification_centre_padding: 20.0,
             notification_centre_group_gap: 10.0,
             notification_centre_row: 38.0,
+            notification_centre_card_gap: 4.0,
             launcher_width: 640.0,
             notification_card_width: 440.0,
             list_row: 38.0,

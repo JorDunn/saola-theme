@@ -115,6 +115,7 @@
     "notificationCentrePadding": 20,
     "notificationCentreGroupGap": 10,
     "notificationCentreRow": 38,
+    "notificationCentreCardGap": 4,
     "launcherWidth": 640,
     "notificationCardWidth": 440,
     "listRow": 38,
