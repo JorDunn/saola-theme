@@ -1,7 +1,8 @@
 //! Notification toast internals (style guide §6): the two pieces
 //! [`crate::style::container::notification_card`] doesn't style — the
 //! bottom-edge lifetime countdown ([`life_rule`]) and the leading icon tile
-//! ([`icon_tile`]).
+//! ([`icon_tile`], or [`icon_tile_colored`] when the tile *is* the payload —
+//! a colour-picker swatch — rather than a recess for a glyph).
 //!
 //! Both are ink-only, no `Surface` parameter — like
 //! [`notification_card`](crate::style::container::notification_card), a
@@ -105,5 +106,146 @@ pub fn icon_tile(t: &Theme, alpha: f32) -> impl Fn(&iced::Theme) -> container::S
         background: Some(Background::Color(background)),
         border: super::border_none(radius),
         ..container::Style::default()
+    }
+}
+
+/// [`icon_tile`] painted with a caller-supplied `fill` instead of the
+/// recessed `on_ink.fill_subtle` — for the one toast whose tile is a
+/// *swatch*, not a recess behind a glyph: saola-capture's colour-picker
+/// toast shows the picked pixel as the tile itself.
+///
+/// `fill` is in token space (`saola_tokens::Color`, 8-bit channels) so a
+/// picked pixel maps straight onto it (`Color { r, g, b, a: 255 }`), and so
+/// the fade below composes in the same space as every other alpha step in
+/// this module. Any RGB is accepted — a swatch is the exception the design
+/// language carves out for the *content* a toast reports on; it does not
+/// make a fourth palette colour available to controls.
+///
+/// `text_color` follows the one rule (text is the opposite of its fill):
+/// it is whichever of `palette.ink` / `palette.paper` has the higher WCAG
+/// contrast against `fill`, so a glyph that inherits the tile's text colour
+/// stays legible on a light pick and a dark pick alike. Same geometry and
+/// radius as [`icon_tile`]; `alpha` is clamped the same way and scales both
+/// the swatch and its text colour.
+pub fn icon_tile_colored(
+    t: &Theme,
+    fill: saola_tokens::Color,
+    alpha: f32,
+) -> impl Fn(&iced::Theme) -> container::Style + Clone {
+    let alpha = if alpha.is_finite() {
+        alpha.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let background = fill.with_opacity(alpha);
+    let text = text_on(t, fill).with_opacity(alpha);
+    let radius = t.radii.tile;
+
+    move |_| container::Style {
+        text_color: Some(text),
+        background: Some(Background::Color(background)),
+        border: super::border_none(radius),
+        ..container::Style::default()
+    }
+}
+
+/// Ink or paper, whichever reads better on `fill` — the WCAG contrast
+/// ratio `(L_lighter + 0.05) / (L_darker + 0.05)` computed against both
+/// identity colours, higher wins. Ties go to ink (a control at rest takes
+/// ink text).
+fn text_on(t: &Theme, fill: saola_tokens::Color) -> saola_tokens::Color {
+    let contrast = |a: saola_tokens::Color, b: saola_tokens::Color| {
+        let (la, lb) = (a.relative_luminance(), b.relative_luminance());
+        (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+    };
+    let ink = t.palette.ink;
+    let paper = t.palette.paper;
+    if contrast(paper, fill) > contrast(ink, fill) {
+        paper
+    } else {
+        ink
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use iced::Background;
+    use saola_tokens::{Color, Theme};
+
+    use super::*;
+
+    fn style(fill: Color, alpha: f32) -> container::Style {
+        let t = Theme::saola();
+        icon_tile_colored(&t, fill, alpha)(&iced::Theme::Dark)
+    }
+
+    fn background(style: &container::Style) -> iced::Color {
+        match style.background {
+            Some(Background::Color(c)) => c,
+            other => panic!("expected a flat colour background, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn colored_tile_paints_the_supplied_fill() {
+        let picked = Color {
+            r: 40,
+            g: 120,
+            b: 200,
+            a: 255,
+        };
+        let s = style(picked, 1.0);
+        assert_eq!(background(&s), picked.into_iced());
+    }
+
+    #[test]
+    fn colored_tile_text_is_ink_on_a_light_pick_and_paper_on_a_dark_one() {
+        let t = Theme::saola();
+        let light = Color {
+            r: 250,
+            g: 240,
+            b: 200,
+            a: 255,
+        };
+        let dark = Color {
+            r: 30,
+            g: 20,
+            b: 60,
+            a: 255,
+        };
+        assert_eq!(text_on(&t, light), t.palette.ink);
+        assert_eq!(text_on(&t, dark), t.palette.paper);
+        // The identity colours themselves resolve to their opposite.
+        assert_eq!(text_on(&t, t.palette.paper), t.palette.ink);
+        assert_eq!(text_on(&t, t.palette.ink), t.palette.paper);
+    }
+
+    #[test]
+    fn colored_tile_alpha_scales_fill_and_text_and_is_clamped() {
+        let picked = Color {
+            r: 200,
+            g: 100,
+            b: 50,
+            a: 255,
+        };
+        let half = style(picked, 0.5);
+        assert!((background(&half).a - 0.5).abs() < 1e-6);
+        assert!((half.text_color.unwrap().a - 0.5).abs() < 1e-6);
+
+        let over = style(picked, 7.0);
+        assert!((background(&over).a - 1.0).abs() < 1e-6);
+        let under = style(picked, -3.0);
+        assert!(background(&under).a.abs() < 1e-6);
+        let nan = style(picked, f32::NAN);
+        assert!((background(&nan).a - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn colored_tile_matches_icon_tile_geometry() {
+        let t = Theme::saola();
+        let plain = icon_tile(&t, 1.0)(&iced::Theme::Dark);
+        let s = style(t.palette.accent, 1.0);
+        assert_eq!(s.border.radius, plain.border.radius);
+        assert_eq!(s.border.width, plain.border.width);
     }
 }

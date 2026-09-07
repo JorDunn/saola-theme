@@ -1204,7 +1204,9 @@ impl Gallery {
         let caption = convert::ColorExt::into_iced(t.on_ink.tertiary);
         let icon_tint = widget::role(t, Surface::Ink, Emphasis::Rest);
 
-        let toast = |elapsed_ms: u64, rest_ms: u32| {
+        // `swatch` swaps the recessed glyph tile for `icon_tile_colored`:
+        // the capture colour-picker's toast, where the tile *is* the payload.
+        let toast = |elapsed_ms: u64, rest_ms: u32, swatch: Option<saola_tokens::Color>| {
             let elapsed = Duration::from_millis(elapsed_ms);
             let alpha = motion::toast_alpha_over(t, rest_ms, elapsed);
             let life = motion::life_fraction_over(t, rest_ms, elapsed);
@@ -1213,15 +1215,25 @@ impl Gallery {
                 .width(t.sizes.icon_tile)
                 .height(t.sizes.icon_tile)
                 .align_x(iced::Center)
-                .align_y(iced::Center)
-                .style(style::notification::icon_tile(t, alpha));
+                .align_y(iced::Center);
+            let tile = match swatch {
+                Some(fill) => container(Space::new().width(0).height(0))
+                    .width(t.sizes.icon_tile)
+                    .height(t.sizes.icon_tile)
+                    .style(style::notification::icon_tile_colored(t, fill, alpha)),
+                None => tile.style(style::notification::icon_tile(t, alpha)),
+            };
 
+            let (title, detail) = match swatch {
+                Some(fill) => ("Colour picked", format!("{fill}")),
+                None => ("Screenshot saved", "~/Pictures/capture-0142.png".to_owned()),
+            };
             let texts = column![
-                text("Screenshot saved")
+                text(title)
                     .font(convert::display_font(t))
                     .size(t.typography.size.section_heading)
                     .color(t.on_ink.primary.with_opacity(alpha)),
-                text("~/Pictures/capture-0142.png")
+                text(detail)
                     .size(t.typography.size.secondary)
                     .color(t.on_ink.secondary.with_opacity(alpha)),
             ]
@@ -1242,29 +1254,45 @@ impl Gallery {
 
         let filmstrip = row![
             column![
-                toast(0, t.motion.toast_idle),
+                toast(0, t.motion.toast_idle, None),
                 text("0 ms — arriving")
                     .size(t.typography.size.label)
                     .color(caption),
             ]
             .spacing(t.sizes.gap_tight),
             column![
-                toast(3000, t.motion.toast_idle),
+                toast(3000, t.motion.toast_idle, None),
                 text("3000 ms — mid-idle, draining")
                     .size(t.typography.size.label)
                     .color(caption),
             ]
             .spacing(t.sizes.gap_tight),
             column![
-                toast(6000, t.motion.toast_idle),
+                toast(6000, t.motion.toast_idle, None),
                 text("6000 ms — fading out, expired")
                     .size(t.typography.size.label)
                     .color(caption),
             ]
             .spacing(t.sizes.gap_tight),
             column![
-                toast(1500, 1500),
+                toast(1500, 1500, None),
                 text("1500 ms — 1500 ms rest span, draining faster (toast_alpha_over)")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+            column![
+                toast(
+                    3000,
+                    t.motion.toast_idle,
+                    Some(saola_tokens::Color {
+                        r: 0x3A,
+                        g: 0x7D,
+                        b: 0xC9,
+                        a: 0xFF,
+                    })
+                ),
+                text("icon_tile_colored — the tile is the picked swatch")
                     .size(t.typography.size.label)
                     .color(caption),
             ]
