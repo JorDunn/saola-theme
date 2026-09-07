@@ -154,7 +154,7 @@ impl OnSurface {
 
     /// The on-ink alpha ladder applied to a caller-supplied `paper` color —
     /// for consumers that override `palette.paper` (e.g. saola-panel's
-    /// `colors { }` KDL block) and need every text/divider/fill role
+    /// `[colors]` table in `panel.toml`) and need every text/divider/fill role
     /// re-stepped from *their* paper, not the built-in ivory.
     ///
     /// Only `paper`'s RGB channels are used; each role gets the ladder's own

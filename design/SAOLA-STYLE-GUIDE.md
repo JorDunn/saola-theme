@@ -533,10 +533,10 @@ One line: `[user] / [path] / [git]  ❯ command`, with the right prompt (`toolch
 The two panel styles are one renderer with two layout passes, sharing one module list:
 
 ```toml
-# panel.toml — Saola components read TOML (panel.toml, notifications.toml),
+# panel.toml — Saola components read TOML (panel.toml, notifications.toml)
 # resolved from $SAOLA_CONFIG_DIR, then $XDG_CONFIG_HOME/saola, then
-# ~/.config/saola.
-[panel]
+# ~/.config/saola. Keys sit at the top level; no wrapper table.
+
 style  = "islands"          # or "ledger"
 edge   = "top"
 margin = 26
@@ -548,11 +548,11 @@ right  = ["mpris", "volume", "network", "battery", "tray", "notifications"]
 
 mark = "builtin:horns"      # or "builtin:notch", "file:~/.icons/arch.svg", "none"
 
-[panel.window-title]
+[window-title]
 max-chars = 50              # cap before the overflow mode applies
 overflow  = "truncate"      # or "marquee" — the opt-in loop, timing in §5
 
-[panel.colors]
+[colors]
 ink    = "#0C0A00"
 paper  = "#FFFFF0"
 accent = "#C67139"
