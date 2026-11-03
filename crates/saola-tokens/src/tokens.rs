@@ -210,9 +210,40 @@ pub struct Sizes {
     /// same canonical centre rhythm as [`Sizes::notification_centre_padding`].
     pub notification_centre_card_gap: f32,
     pub launcher_width: f32,
+    /// Cell edge length of one app tile in the launcher's **grid** layout
+    /// (style guide §7, "Launcher (grid)"; saola-launcher). Above the 44 px
+    /// touch minimum (`hit_target_touch`) on purpose: the grid layout is the
+    /// tablet layout. The tile is a hit target, so the whole cell is the
+    /// button (`style::button::app_tile`).
+    ///
+    /// The `launcher_tile*` family is deliberately separate from
+    /// [`Sizes::grid_tile`] and its siblings, which size saola-files' icon
+    /// grid. The two grids look alike but answer to different consumers and
+    /// different input (touch versus pointer); one shared set of tokens would
+    /// couple a file-manager change to the launcher.
+    ///
+    /// These tokens set the grid's *pitch* only. Consumers compute the column
+    /// count themselves as `width / (launcher_tile + launcher_tile_gap)`.
+    pub launcher_tile: f32,
+    /// App-icon size inside a [`Sizes::launcher_tile`] cell. The missing-icon
+    /// fallback (`style::container::icon_placeholder`) is drawn at this size
+    /// too.
+    pub launcher_tile_icon: f32,
+    /// Height of the app-name label band under the icon in a
+    /// [`Sizes::launcher_tile`] cell. `launcher_tile_icon +
+    /// launcher_tile_label` must fit inside `launcher_tile`; the remainder is
+    /// the cell's own padding.
+    pub launcher_tile_label: f32,
+    /// Gap between [`Sizes::launcher_tile`] cells, along both axes.
+    pub launcher_tile_gap: f32,
     pub notification_card_width: f32,
     /// Menu/list row height (tray menus, popover lists).
     pub list_row: f32,
+    /// List row height for touch layouts. [`Sizes::list_row`] (38) is under
+    /// the 44 px touch minimum ([`Sizes::hit_target_touch`]), so a layout
+    /// driven by a finger uses this instead — e.g. the ranked rows of the
+    /// launcher's grid layout (style guide §7, "Launcher (grid)").
+    pub list_row_touch: f32,
     /// Height of a bar-shaped hit target: the segmented control, and a title
     /// or header band such as the notification centre's header row (style
     /// guide §6). Two pixels taller than [`Sizes::list_row`], on purpose — it
@@ -326,6 +357,19 @@ pub struct Sizes {
     pub selection_dash_fill: f32,
     /// Marching-ants selection outline: gap between dashes (saola-capture).
     pub selection_dash_gap: f32,
+    /// Thickness of the invisible bottom-edge gesture strip that
+    /// saola-launcher owns (`design/TOUCH.md`). Thin on purpose: the strip
+    /// sits on the Overlay layer above the on-screen keyboard, so a thick
+    /// strip would eat the keyboard's space bar.
+    pub edge_strip: f32,
+    /// Minimum upward travel for a touch on the edge strip to count as a
+    /// swipe (`design/TOUCH.md`). Measured within one touch grab, from the
+    /// touch-down point. Must stay above [`Sizes::tap_tolerance`]; travel
+    /// between the two is no action.
+    pub swipe_threshold: f32,
+    /// Maximum total travel for a touch on the edge strip to count as a tap
+    /// (`design/TOUCH.md`). Must stay below [`Sizes::swipe_threshold`].
+    pub tap_tolerance: f32,
     /// Compositor blur radius behind the launcher scrim (style guide §2:
     /// "Launcher open | `rgba(12,10,0,0.52)` + 4px blur"), in logical
     /// pixels. Paired with `color.scrim.launcher` (`Scrim::launcher`).
@@ -386,8 +430,13 @@ impl Default for Sizes {
             notification_centre_row: 38.0,
             notification_centre_card_gap: 4.0,
             launcher_width: 640.0,
+            launcher_tile: 84.0,
+            launcher_tile_icon: 48.0,
+            launcher_tile_label: 32.0,
+            launcher_tile_gap: 16.0,
             notification_card_width: 440.0,
             list_row: 38.0,
+            list_row_touch: 48.0,
             hit_target_bar: 40.0,
             hit_target_touch: 44.0,
             // 16 (bumped from 15, 2026-08-01): the bar readouts went
@@ -430,6 +479,9 @@ impl Default for Sizes {
             readout_width: 136.0,
             selection_dash_fill: 6.0,
             selection_dash_gap: 4.0,
+            edge_strip: 8.0,
+            swipe_threshold: 48.0,
+            tap_tolerance: 10.0,
             scrim_blur_launcher: 4.0,
             scrim_blur_overview: 6.0,
             scrim_blur_modal: 7.0,

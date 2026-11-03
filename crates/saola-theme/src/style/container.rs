@@ -148,6 +148,31 @@ pub fn tile(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     move |_| surface(background, text, radius)
 }
 
+/// The missing-app-icon tile in the launcher's grid layout (style guide §7,
+/// "Launcher (grid)"): an `on_ink.fill` (α .12) square at `radii.tile`, with
+/// ivory `on_ink.primary` as the inherited text color. It stands in for an
+/// app whose desktop entry names no icon, or names one that does not
+/// resolve.
+///
+/// The glyph inside is [`crate::icon::Icon::LayoutGrid`] — there is no
+/// generic "box"/"package" glyph in the icon set, and an app grid reads as
+/// the right generic for "an app". Draw it with
+/// [`crate::icon::icon`] tinted `on_ink.primary`: an `Svg`'s tint can't
+/// ride a container style, same constraint as `notification::icon_tile`.
+/// Size the container square at `sizes.launcher_tile_icon`, so a
+/// placeholder takes exactly the space a real icon would.
+///
+/// Ink-only (no [`Surface`] parameter) on purpose: the launcher is shell
+/// chrome and always draws on ink (§2). It uses `fill` rather than
+/// [`tile`]'s `fill_subtle` so the placeholder still reads as a solid shape
+/// next to real, full-color app icons.
+pub fn icon_placeholder(t: &Theme) -> impl Fn(&iced::Theme) -> Style + Clone {
+    let background = t.on_ink.fill.into_iced();
+    let text = t.on_ink.primary.into_iced();
+    let radius = t.radii.tile;
+    move |_| surface(background, text, radius)
+}
+
 /// An inset panel: [`tile`]'s exact recipe at `radii.inset` (20) instead of
 /// `radii.tile` (13). `tile` is for icon tiles (style guide §4); this is the
 /// window-scale recessed panel — a sidebar's places column, a header or

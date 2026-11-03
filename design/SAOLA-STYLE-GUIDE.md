@@ -185,6 +185,11 @@ island pills are solid ink like the ledger bar, not a translucent scrim. The
 translucent scrim treatment remains available for overlay states (launcher,
 overview, lock), not for the resting panel.
 
+The blur values in the table are compositor-dependent. iced cannot blur what is behind a
+window, so a blur only exists where the compositor draws it. **Under niri the launcher
+scrim's blur is dropped:** consumers paint `scrim(ScrimKind::Launcher)` flat, at the
+table's `0.52`.
+
 ---
 
 ## 3. Type
@@ -251,6 +256,9 @@ Everything is a pill or an over-rounded rectangle. There are no sharp corners.
 | Launcher width | `620–640px` |
 | Notification card width | `440px` |
 | Hit target, minimum | `40px` (bar) / `44px` (touch and lock/greeter) |
+| List row, touch layouts | `48px` (`list_row_touch`). The standard `38px` row (`list_row`) is under the `44px` touch minimum, so a layout driven by a finger uses this. |
+| Launcher grid cell | `84px` tile (`launcher_tile`), `48px` icon (`launcher_tile_icon`), `32px` label band (`launcher_tile_label`), `16px` gap (`launcher_tile_gap`). Separate from the file manager's `grid_tile*` on purpose. |
+| Bottom-edge gesture strip | `8px` thick (`edge_strip`); swipe `≥ 48px` (`swipe_threshold`), tap `< 10px` (`tap_tolerance`) — see `design/TOUCH.md` |
 | Icon in bar | `15–16px` — `16px` since the icon-only bar readouts (2026-08-01): the glyph is the whole readout, so it takes the top of the range |
 | Icon in menus and rows | `16–19px` |
 | Icon in a bare-icon menu (power) | `30–34px` in an `84px` target |
@@ -269,6 +277,7 @@ Short, and only where it carries meaning.
 |---|---|
 | Hover colour change | `140ms ease` |
 | Popover open | `160ms ease-out`, from `translateY(-6px) scale(0.985)` + fade |
+| Launcher open / dismiss (both layouts) | Popover timing — `motion.popover`, unchanged. No launcher motion token. |
 | Lock/greeter wake (rest → prompt) | `450ms ease` on opacity and `scale(0.97 → 1)` |
 | Countdown / progress rule | `1s linear` |
 | Notification popup | see below |
@@ -420,6 +429,7 @@ here instead.
 | Panel — Islands (default) | Solid ink pills over wallpaper | Five separate layer-shell surfaces: mark, window title (present only while a window has focus), clock + column strip, status, notifications. Each redraws independently. Same opaque ink and screen-edge margins as the ledger bar. |
 | Panel — Ledger | One ink bar | Same modules, fixed slots, edge to edge. |
 | Launcher | Ink, 620–640px | One field, ranked rows, group header in serif. Selection terracotta. |
+| Launcher (grid) | Opaque ink, full screen | The touch layout. Search field on top, then a vertically scrolling grid of `button::app_tile` cells (`launcher_tile` / `launcher_tile_icon` / `launcher_tile_label` / `launcher_tile_gap`; columns = width ÷ (tile + gap)). Ranked rows at `list_row_touch`. A missing app icon is `container::icon_placeholder` with `Icon::LayoutGrid`. Opens and dismisses on `motion.popover`. The bottom-edge swipe that opens it is in `design/TOUCH.md`. |
 | Overview | Ink over blurred wallpaper | Workspaces as horizontal strips stacked vertically, window widths proportional to real column widths. |
 | Notification centre | Ink, right | Grouped, collapsible, DND toggle, media footer. |
 | Quick settings | Ink, right | Power profile selector, battery and Wi-Fi readouts, volume slider, media. Buttons: terracotta fill when active/selected, ivory at rest, per §1's one rule. |

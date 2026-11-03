@@ -99,6 +99,11 @@ mod tests {
         let tile = super::container::tile(&t, Surface::Ink);
         let _reused = tile.clone();
 
+        let app_tile = super::button::app_tile(&t, Surface::Ink, false, false);
+        let _reused = app_tile.clone();
+        let placeholder = super::container::icon_placeholder(&t);
+        let _reused = placeholder.clone();
+
         let field = super::text_input::rest(&t, Surface::Ink);
         let _reused = field.clone();
 

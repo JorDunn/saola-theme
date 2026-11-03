@@ -361,6 +361,12 @@ impl Gallery {
                 // ink-only too.
                 text("Notification centre").size(t.typography.size.section_heading),
                 self.labeled_surface_row(Surface::Ink, self.notification_centre_column()),
+                // The launcher's grid layout (style guide §7): shell chrome
+                // on opaque ink, so — like the toast's icon tiles — the
+                // `icon_placeholder` composite is ink-only. `app_tile` on
+                // both surfaces is in "Rows, tiles & menus" above.
+                text("Launcher grid").size(t.typography.size.section_heading),
+                self.labeled_surface_row(Surface::Ink, self.launcher_grid_row()),
             ]
             .spacing(16)
             .width(Fill),
@@ -1497,6 +1503,31 @@ impl Gallery {
         ]
         .spacing(t.sizes.grid_tile_gap);
 
+        // `app_tile`: the launcher grid cell, at the `launcher_tile`
+        // geometry. Same rest/hover/selected/focused as `selection_tile`,
+        // but an unselected tile goes terracotta while pressed — press and
+        // hold one to see it. The icon-bearing composite is the ink-only
+        // "Launcher grid" section further down.
+        let app_tile = |label: &'static str, selected: bool, focused: bool| {
+            button(
+                container(text(label).size(t.typography.size.secondary))
+                    .align_x(iced::Center)
+                    .align_y(iced::Center)
+                    .width(Fill)
+                    .height(Fill),
+            )
+            .style(style::button::app_tile(t, s, selected, focused))
+            .width(t.sizes.launcher_tile)
+            .height(t.sizes.launcher_tile)
+            .on_press(Message::DemoPressed)
+        };
+        let app_tiles = row![
+            app_tile("Rest", false, false),
+            app_tile("Selected", true, false),
+            app_tile("Focused", false, true),
+        ]
+        .spacing(t.sizes.launcher_tile_gap);
+
         // `menu_row`, both ways: the raw style helper (quiet at rest, full
         // terracotta on hover — hover is the selection preview) and the
         // bundled `widget::menu_row`, whose leading glyph takes its tint
@@ -1561,6 +1592,7 @@ impl Gallery {
             rows,
             inset_panel,
             tiles,
+            app_tiles,
             menu,
             widget::hairline(t, s),
             vertical_demo
@@ -2097,6 +2129,66 @@ impl Gallery {
             .color(caption),
         ]
         .spacing(10)
+        .into()
+    }
+
+    /// The §7 "Launcher (grid)" cell composite: `button::app_tile` at the
+    /// `launcher_tile*` geometry, holding an icon square
+    /// (`launcher_tile_icon`) over a label band (`launcher_tile_label`).
+    /// The gallery bundles no app icons, so every cell shows the
+    /// missing-icon fallback — `container::icon_placeholder` with
+    /// `Icon::LayoutGrid` — in its rest, selected and focused states.
+    fn launcher_grid_row(&self) -> Element<'_, Message> {
+        let t = &self.theme;
+        let caption = convert::ColorExt::into_iced(t.on_ink.tertiary);
+        let glyph_tint = convert::ColorExt::into_iced(t.on_ink.primary);
+
+        let cell = |label: &'static str, selected: bool, focused: bool| {
+            let placeholder = container(icon(Icon::LayoutGrid, t.sizes.icon_menu, glyph_tint))
+                .width(t.sizes.launcher_tile_icon)
+                .height(t.sizes.launcher_tile_icon)
+                .align_x(iced::Center)
+                .align_y(iced::Center)
+                .style(style::container::icon_placeholder(t));
+            let name = container(text(label).size(t.typography.size.label))
+                .height(t.sizes.launcher_tile_label)
+                .align_y(iced::Center);
+            button(column![placeholder, name].align_x(iced::Center).width(Fill))
+                .style(style::button::app_tile(t, Surface::Ink, selected, focused))
+                .width(t.sizes.launcher_tile)
+                .height(t.sizes.launcher_tile)
+                .padding(0)
+                .on_press(Message::DemoPressed)
+        };
+
+        row![
+            row![
+                cell("Files", false, false),
+                cell("Terminal", true, false),
+                cell("Settings", false, true),
+            ]
+            .spacing(t.sizes.launcher_tile_gap),
+            column![
+                text(format!(
+                    "launcher_tile · {:.0}px, gap {:.0}px",
+                    t.sizes.launcher_tile, t.sizes.launcher_tile_gap
+                ))
+                .size(t.typography.size.label)
+                .color(caption),
+                text(format!(
+                    "icon {:.0}px + label {:.0}px",
+                    t.sizes.launcher_tile_icon, t.sizes.launcher_tile_label
+                ))
+                .size(t.typography.size.label)
+                .color(caption),
+                text("icon_placeholder + Icon::LayoutGrid — no app icon")
+                    .size(t.typography.size.label)
+                    .color(caption),
+            ]
+            .spacing(t.sizes.gap_tight),
+        ]
+        .spacing(16)
+        .align_y(iced::Center)
         .into()
     }
 

@@ -1,5 +1,6 @@
 //! Button styles: `rest`, `active`, `emphasis`, `muted`, `bare`,
-//! `list_row`, `selection_tile`, `menu_row`, `breadcrumb`, `bare_icon`.
+//! `list_row`, `selection_tile`, `app_tile`, `menu_row`, `breadcrumb`,
+//! `bare_icon`.
 //!
 //! The one rule, applied to buttons:
 //!
@@ -21,6 +22,9 @@
 //!   progression at rest, [`active`]'s terracotta when `selected`.
 //! - [`selection_tile`] — [`list_row`]'s exact recipe at `radii.tile`, for
 //!   grid-view tiles.
+//! - [`app_tile`] — a launcher grid cell: [`selection_tile`]'s shape and
+//!   rest/hover, but terracotta on press too, because tapping a tile
+//!   launches the app — the press *is* the selection.
 //! - [`menu_row`] — a menu option: quiet at rest, terracotta the moment it
 //!   is hovered ("hover is the selection preview").
 //! - [`breadcrumb`] — a file-picker path segment (style guide §7): quiet
@@ -282,6 +286,69 @@ pub fn selection_tile(
     selectable(t, s, selected, focused, t.radii.tile)
 }
 
+/// One app cell in the launcher's grid layout (style guide §7, "Launcher
+/// (grid)"): transparent at rest with the surface's `primary` label,
+/// `fill_subtle` on hover, and the terracotta "on" fill with an ivory label
+/// when `selected` **or** while `Status::Pressed`. Corners are `radii.tile`,
+/// not pill. Pair it with the `sizes.launcher_tile*` tokens for geometry.
+///
+/// It differs from [`selection_tile`] only in the unselected press: a
+/// selection tile deepens to `fill` and waits for a second action, but a
+/// launcher tile launches on release, so the press previews that "on" state
+/// in terracotta (the same idea as [`menu_row`]'s hover-is-the-preview).
+/// Selected hover/press pre-composite the surface's fill steps over the
+/// accent, exactly as [`selection_tile`] does.
+///
+/// `focused` is the keyboard cursor (arrow keys in the grid). iced buttons
+/// have no `Status::Focused`, so the consumer tracks it and passes it here;
+/// the tile then draws the [`crate::style::focus_border`] ring at
+/// `radii.tile` in place of its transparent border — same mechanism as
+/// [`list_row`].
+///
+/// `Status::Disabled` (also what a tile without `.on_press` reports) draws
+/// the rest state, as [`list_row`] and [`selection_tile`] do: a tile is
+/// content, not a control, and an app that can't launch is removed from
+/// the grid rather than grayed out.
+pub fn app_tile(
+    t: &Theme,
+    s: Surface,
+    selected: bool,
+    focused: bool,
+) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+    let on = *t.on(s);
+    let accent = t.palette.accent;
+    let ivory = t.palette.paper;
+    let radius = t.radii.tile;
+    let selected_hover = on.fill_subtle.over(accent);
+    let selected_press = on.fill.over(accent);
+    let border = if focused {
+        super::focus_border(t, radius)
+    } else {
+        super::border_none(radius)
+    };
+    move |_, status| {
+        let style = if selected {
+            let background = match status {
+                Status::Hovered => selected_hover,
+                Status::Pressed => selected_press,
+                Status::Active | Status::Disabled => accent,
+            };
+            pill(Some(background.into_iced()), ivory.into_iced(), radius)
+        } else {
+            match status {
+                Status::Pressed => pill(Some(accent.into_iced()), ivory.into_iced(), radius),
+                Status::Hovered => pill(
+                    Some(on.fill_subtle.into_iced()),
+                    on.primary.into_iced(),
+                    radius,
+                ),
+                Status::Active | Status::Disabled => pill(None, on.primary.into_iced(), radius),
+            }
+        };
+        Style { border, ..style }
+    }
+}
+
 /// The shared body of [`list_row`] and [`selection_tile`] — one recipe, two
 /// radii.
 fn selectable(
@@ -540,4 +607,48 @@ pub fn breadcrumb(
 pub fn bare_icon(t: &Theme) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     let label = t.on_ink.primary.into_iced();
     move |_, _status| pill(None, label, 0.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use iced::widget::button::Status;
+    use saola_tokens::{Surface, Theme};
+
+    use crate::convert::ColorExt;
+
+    fn background(style: &super::Style) -> Option<iced::Color> {
+        match style.background {
+            Some(iced::Background::Color(c)) => Some(c),
+            None => None,
+            Some(other) => panic!("expected a flat color, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn app_tile_is_transparent_at_rest_and_terracotta_on_press() {
+        let t = Theme::saola();
+        for s in [Surface::Ink, Surface::Paper] {
+            let style = super::app_tile(&t, s, false, false);
+            let rest = style(&iced::Theme::Dark, Status::Active);
+            assert_eq!(background(&rest), None);
+            assert_eq!(rest.text_color, t.on(s).primary.into_iced());
+
+            let hover = style(&iced::Theme::Dark, Status::Hovered);
+            assert_eq!(background(&hover), Some(t.on(s).fill_subtle.into_iced()));
+
+            let press = style(&iced::Theme::Dark, Status::Pressed);
+            assert_eq!(background(&press), Some(t.palette.accent.into_iced()));
+            assert_eq!(press.text_color, t.palette.paper.into_iced());
+        }
+    }
+
+    #[test]
+    fn app_tile_selected_is_terracotta_and_focus_draws_the_ring() {
+        let t = Theme::saola();
+        let style = super::app_tile(&t, Surface::Ink, true, true);
+        let rest = style(&iced::Theme::Dark, Status::Active);
+        assert_eq!(background(&rest), Some(t.palette.accent.into_iced()));
+        assert_eq!(rest.text_color, t.palette.paper.into_iced());
+        assert_eq!(rest.border, super::super::focus_border(&t, t.radii.tile));
+    }
 }

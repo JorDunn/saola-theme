@@ -396,6 +396,58 @@ mod tests {
         assert!(ratio >= 3.0, "accent_dark/paper contrast was {ratio}");
     }
 
+    // ---- Touch geometry -------------------------------------------------
+    //
+    // The touch sizes only make sense relative to each other and to the 44 px
+    // touch minimum (`hit_target_touch`), so the invariants are checked as
+    // relations, not as the literal values.
+
+    #[test]
+    fn touch_list_row_meets_the_touch_minimum() {
+        let s = Theme::saola().sizes;
+        assert!(
+            s.list_row_touch >= s.hit_target_touch,
+            "list_row_touch {} is under hit_target_touch {}",
+            s.list_row_touch,
+            s.hit_target_touch
+        );
+    }
+
+    #[test]
+    fn launcher_tile_meets_the_touch_minimum() {
+        let s = Theme::saola().sizes;
+        assert!(
+            s.launcher_tile >= s.hit_target_touch,
+            "launcher_tile {} is under hit_target_touch {}",
+            s.launcher_tile,
+            s.hit_target_touch
+        );
+    }
+
+    #[test]
+    fn launcher_tile_icon_and_label_fit_inside_the_tile() {
+        let s = Theme::saola().sizes;
+        assert!(
+            s.launcher_tile_icon + s.launcher_tile_label <= s.launcher_tile,
+            "icon {} + label {} overflow the {} tile",
+            s.launcher_tile_icon,
+            s.launcher_tile_label,
+            s.launcher_tile
+        );
+    }
+
+    #[test]
+    fn tap_tolerance_is_below_swipe_threshold() {
+        // An overlap would make one gesture both a tap and a swipe.
+        let s = Theme::saola().sizes;
+        assert!(
+            s.tap_tolerance < s.swipe_threshold,
+            "tap_tolerance {} is not below swipe_threshold {}",
+            s.tap_tolerance,
+            s.swipe_threshold
+        );
+    }
+
     // ---- The session-status semaphore family ---------------------------
     //
     // The documented exception to "three colors, never a fourth" (see
