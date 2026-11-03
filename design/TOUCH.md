@@ -74,7 +74,7 @@ separate launcher motion token.
 | Interface | Owner | Spec |
 |---|---|---|
 | `io.saola.Keyboard1` (`Toggle`) | saola-keyboard | `saola-keyboard/docs/keyboard-spec.md` |
-| `Launcher1` | saola-launcher | saola-launcher's spec (Launcher1) |
+| `io.saola.Launcher1` (`Toggle`, `Show`, `Hide`; `Visible`; `VisibilityChanged`) | saola-launcher | `saola-launcher/README.md`, section "Frozen contract: io.saola.Launcher1" |
 
 Paths are relative to the parent directory that holds the Saola repositories. The
 D-Bus interfaces are the contract between the strip and the components it drives; this
