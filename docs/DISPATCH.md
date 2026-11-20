@@ -112,7 +112,9 @@ still open and still assigned, so the query does not return it again.
 
 ## Concurrency
 
--   At most 3 tasks in flight.
+-   At most 3 tasks in flight. A task is in flight from its claim until its
+    PR merges or it is abandoned. A `theme-request` that has merged and waits
+    on its tag stays assigned but holds neither a slot nor its `lock:*`.
 -   A `solo` task starts only when nothing is in flight, and nothing else
     starts until it merges or stops.
 -   Two tasks carrying the same `lock:*` label never run together.
@@ -191,6 +193,13 @@ the PR against its issue. Send findings to the author agent to fix, then
 review again. After two rounds without a clean review, label the PR and
 issue `needs-jordan`, unassign the slot, and move on.
 
+### Abandon
+
+When a PR is closed unmerged for any other reason, unassign the issue
+(`gh issue edit <n> -R JorDunn/saola-theme --remove-assignee @me`), set its
+Status back to `Todo`, and say why in a comment. Otherwise the issue stays
+assigned and never returns to the ready queue.
+
 ### 4. Merge
 
 On a clean review and green required checks (`fmt`, `clippy`, `test`,
@@ -229,6 +238,18 @@ merges.
 Consumers pin saola-theme to a release tag, so a request is delivered when
 the tag exists, not when the PR merges.
 
+A `theme-request` PR that changes a crate is titled `feat`, `fix` or `perf`
+(with `!` when breaking), so the change appears in the changelog the consumer
+reads on the pin bump.
+
+"`main` holds an unreleased `theme-request` change" means: an open
+`theme-request` issue has a merged PR that references it, and no tag
+contains that PR's merge commit:
+
+```bash
+git fetch --tags origin && git tag --contains <merge-sha>   # empty = unreleased
+```
+
 1.  Every push to `main` makes release-plz open or update the
     `chore: release` PR (per-crate version bumps and changelog entries).
     Never edit that PR's content by hand.
@@ -253,6 +274,11 @@ the tag exists, not when the PR merges.
     the signal that unblocks the consumer's task.
 5.  Send one message per released batch to the requesting session: the tag,
     the closed issues, and anything it must change on the pin bump.
+
+If a merged `theme-request` PR changed no crate (docs or the style guide
+only), release-plz opens no release PR and no tag is coming. Close the issue
+with a comment that says so and names the merge commit; the consumer has
+nothing to bump.
 
 A release that carries no `theme-request` change (docs, CI, internal
 refactors) is not urgent; merge its release PR with the next one that is, or

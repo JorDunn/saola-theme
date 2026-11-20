@@ -14,7 +14,8 @@ cargo run --example gallery                             # visual preview (needs 
 cargo tree -p saola-tokens -e normal                    # must show ONLY serde/toml/thiserror
 ```
 
-All four CI jobs (fmt, clippy, test, gallery build) must pass before any change is done.
+All four build jobs (fmt, clippy, test, gallery build) must pass before any change is done;
+on a PR, CI also runs `pr-title`.
 
 ## Task workflow
 

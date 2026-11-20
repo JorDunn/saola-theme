@@ -8,6 +8,7 @@ Use `Refs #<n>` for a `theme-request`: that issue stays open until the release
 tag that ships it exists (docs/DISPATCH.md, "Release").
 -->
 
+<!-- `Closes #<n>` for a task, `Refs #<n>` for a theme-request. -->
 Closes #
 
 ## What and why
