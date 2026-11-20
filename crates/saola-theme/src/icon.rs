@@ -50,7 +50,9 @@
 //!
 //! What's bundled: the union of the generic Lucide glyphs the panel and the
 //! file manager grew independently, the greeter's power cluster and
-//! no-avatar glyphs, plus the two Saola marks (style guide §8 — the mark is
+//! no-avatar glyphs, the file manager's parity-backlog set (tabs, split and
+//! view toggles, zoom, search and filter, selection, bookmarks, stars and
+//! tags, devices, archives, preferences), plus the two Saola marks (style guide §8 — the mark is
 //! design-system property, so its assets live here).
 //! App-specific brand icons (the panel's `anthropic`/`claude-code` pair)
 //! stay in the app that reports on that product — an app that needs a brand
@@ -233,6 +235,49 @@ pub enum Icon {
     /// A person with no avatar — the greeter's "Not listed?" tile, and any
     /// user row that has no picture to show.
     UserRound,
+
+    // ── saola-files parity backlog (theme request #21) ──────────────────
+    Plus,
+    Columns2,
+    LayoutList,
+    ZoomIn,
+    ZoomOut,
+    AppWindow,
+    Funnel,
+    Search,
+    TextSearch,
+    ListChecks,
+    ArrowLeftRight,
+    Regex,
+    ListTodo,
+    CopyPlus,
+    LayoutTemplate,
+    Hash,
+    ClipboardCopy,
+    Zap,
+    ArchiveRestore,
+    BookmarkPlus,
+    BookmarkMinus,
+    ArrowDown,
+    Eject,
+    LockOpen,
+    History,
+    Star,
+    StarOff,
+    Tag,
+    Tags,
+    Move,
+    PanelRight,
+    FolderTree,
+    ChevronDown,
+    PackageOpen,
+    Package,
+    SquareTerminal,
+    Settings,
+    Keyboard,
+    Network,
+    Smartphone,
+    Shield,
 }
 
 impl Icon {
@@ -321,6 +366,47 @@ impl Icon {
             Icon::RotateCw => include_bytes!("../assets/icons/rotate-cw.svg"),
             Icon::Moon => include_bytes!("../assets/icons/moon.svg"),
             Icon::UserRound => include_bytes!("../assets/icons/user-round.svg"),
+            Icon::Plus => include_bytes!("../assets/icons/plus.svg"),
+            Icon::Columns2 => include_bytes!("../assets/icons/columns-2.svg"),
+            Icon::LayoutList => include_bytes!("../assets/icons/layout-list.svg"),
+            Icon::ZoomIn => include_bytes!("../assets/icons/zoom-in.svg"),
+            Icon::ZoomOut => include_bytes!("../assets/icons/zoom-out.svg"),
+            Icon::AppWindow => include_bytes!("../assets/icons/app-window.svg"),
+            Icon::Funnel => include_bytes!("../assets/icons/funnel.svg"),
+            Icon::Search => include_bytes!("../assets/icons/search.svg"),
+            Icon::TextSearch => include_bytes!("../assets/icons/text-search.svg"),
+            Icon::ListChecks => include_bytes!("../assets/icons/list-checks.svg"),
+            Icon::ArrowLeftRight => include_bytes!("../assets/icons/arrow-left-right.svg"),
+            Icon::Regex => include_bytes!("../assets/icons/regex.svg"),
+            Icon::ListTodo => include_bytes!("../assets/icons/list-todo.svg"),
+            Icon::CopyPlus => include_bytes!("../assets/icons/copy-plus.svg"),
+            Icon::LayoutTemplate => include_bytes!("../assets/icons/layout-template.svg"),
+            Icon::Hash => include_bytes!("../assets/icons/hash.svg"),
+            Icon::ClipboardCopy => include_bytes!("../assets/icons/clipboard-copy.svg"),
+            Icon::Zap => include_bytes!("../assets/icons/zap.svg"),
+            Icon::ArchiveRestore => include_bytes!("../assets/icons/archive-restore.svg"),
+            Icon::BookmarkPlus => include_bytes!("../assets/icons/bookmark-plus.svg"),
+            Icon::BookmarkMinus => include_bytes!("../assets/icons/bookmark-minus.svg"),
+            Icon::ArrowDown => include_bytes!("../assets/icons/arrow-down.svg"),
+            Icon::Eject => include_bytes!("../assets/icons/eject.svg"),
+            Icon::LockOpen => include_bytes!("../assets/icons/lock-open.svg"),
+            Icon::History => include_bytes!("../assets/icons/history.svg"),
+            Icon::Star => include_bytes!("../assets/icons/star.svg"),
+            Icon::StarOff => include_bytes!("../assets/icons/star-off.svg"),
+            Icon::Tag => include_bytes!("../assets/icons/tag.svg"),
+            Icon::Tags => include_bytes!("../assets/icons/tags.svg"),
+            Icon::Move => include_bytes!("../assets/icons/move.svg"),
+            Icon::PanelRight => include_bytes!("../assets/icons/panel-right.svg"),
+            Icon::FolderTree => include_bytes!("../assets/icons/folder-tree.svg"),
+            Icon::ChevronDown => include_bytes!("../assets/icons/chevron-down.svg"),
+            Icon::PackageOpen => include_bytes!("../assets/icons/package-open.svg"),
+            Icon::Package => include_bytes!("../assets/icons/package.svg"),
+            Icon::SquareTerminal => include_bytes!("../assets/icons/square-terminal.svg"),
+            Icon::Settings => include_bytes!("../assets/icons/settings.svg"),
+            Icon::Keyboard => include_bytes!("../assets/icons/keyboard.svg"),
+            Icon::Network => include_bytes!("../assets/icons/network.svg"),
+            Icon::Smartphone => include_bytes!("../assets/icons/smartphone.svg"),
+            Icon::Shield => include_bytes!("../assets/icons/shield.svg"),
         }
     }
 
@@ -454,7 +540,7 @@ mod tests {
 
     /// Every embedded icon, so the tests below can walk the whole asset set
     /// without a second hand-maintained list of bytes.
-    const ALL: [Icon; 80] = [
+    const ALL: [Icon; 121] = [
         Icon::Volume2,
         Icon::Volume1,
         Icon::Volume,
@@ -535,6 +621,47 @@ mod tests {
         Icon::RotateCw,
         Icon::Moon,
         Icon::UserRound,
+        Icon::Plus,
+        Icon::Columns2,
+        Icon::LayoutList,
+        Icon::ZoomIn,
+        Icon::ZoomOut,
+        Icon::AppWindow,
+        Icon::Funnel,
+        Icon::Search,
+        Icon::TextSearch,
+        Icon::ListChecks,
+        Icon::ArrowLeftRight,
+        Icon::Regex,
+        Icon::ListTodo,
+        Icon::CopyPlus,
+        Icon::LayoutTemplate,
+        Icon::Hash,
+        Icon::ClipboardCopy,
+        Icon::Zap,
+        Icon::ArchiveRestore,
+        Icon::BookmarkPlus,
+        Icon::BookmarkMinus,
+        Icon::ArrowDown,
+        Icon::Eject,
+        Icon::LockOpen,
+        Icon::History,
+        Icon::Star,
+        Icon::StarOff,
+        Icon::Tag,
+        Icon::Tags,
+        Icon::Move,
+        Icon::PanelRight,
+        Icon::FolderTree,
+        Icon::ChevronDown,
+        Icon::PackageOpen,
+        Icon::Package,
+        Icon::SquareTerminal,
+        Icon::Settings,
+        Icon::Keyboard,
+        Icon::Network,
+        Icon::Smartphone,
+        Icon::Shield,
     ];
 
     /// The solid-filled assets — exempt from the stroke-width and
