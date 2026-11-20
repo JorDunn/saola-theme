@@ -44,8 +44,8 @@ use iced::widget::scrollable::{Anchor, Direction, Scrollbar};
 use iced::widget::text as text_widget;
 use iced::widget::text::IntoFragment;
 use iced::widget::{
-    button, column, container, progress_bar, row, rule, scrollable, Column, Container, ProgressBar,
-    Row, Rule, Space,
+    button, column, container, progress_bar, row, rule, scrollable, stack, text_input, Column,
+    Container, ProgressBar, Row, Rule, Space,
 };
 use iced::{Center, Element, Fill};
 use saola_tokens::{Chrome, Surface, Theme};
@@ -944,6 +944,190 @@ where
         .padding(track_inset)
         .style(style::segmented::track(t, s))
         .into()
+}
+
+// ---------------------------------------------------------------------------
+// Search field
+// ---------------------------------------------------------------------------
+
+/// A search field: a 38 px pill text field (`sizes.list_row`, the style
+/// guide's 38 px field height) with a leading glyph at `sizes.icon_row` and
+/// a clear button (`Icon::X`) that exists only while `value` is non-empty
+/// (style guide §4 "Icon in menus and rows", §6 "Text field"; look from
+/// [`style::text_input::search`]: subtle fill, fill step on hover, 2 px
+/// terracotta ring on focus).
+///
+/// **How the ring surrounds the whole pill.** iced's `text_input` paints its
+/// own background and border over its full bounds but has no slot for a
+/// button, and its `icon` option is a single font glyph, not a widget. So
+/// the `text_input` itself spans the entire pill — its left/right padding
+/// reserves room for the glyph and clear button — and the glyph and clear
+/// button are *layered over that padding* with `stack!`. The fill, hover
+/// step and focus ring are therefore the input's own style, and they
+/// surround glyph, input and clear button alike. (The alternative — an
+/// outer container drawing the pill around a borderless input — cannot see
+/// the input's focus state, so the ring could not be drawn.)
+///
+/// **The clear button captures its own press.** It sits above the input in
+/// the stack, and `stack` offers events top-down and stops at the first
+/// widget that captures one; a pressed `button` captures, so the click never
+/// reaches the input underneath (and the input does not report hover or take
+/// focus while the pointer is on the clear button). `on_clear` fires; the
+/// consumer should empty `value` and, to keep typing, return
+/// `iced::widget::operation::focus(id)` as a `Task`. That is what `id` is
+/// for: it is set on the inner `text_input`.
+///
+/// `id` is `iced::widget::Id` — iced 0.14 has no `text_input::Id`. `on_input`
+/// carries a `'a` bound because the widget stores it.
+///
+/// The glyph and clear-button tints are baked at build time (workaround #3
+/// in the module docs); a focused field keeps the same glyph tint.
+///
+/// See [`search_field_disabled`] for the disabled state.
+///
+/// ```no_run
+/// use saola_theme::{icon::Icon, widget, Surface, Theme};
+///
+/// #[derive(Clone)]
+/// enum Msg {
+///     Query(String),
+///     ClearQuery,
+/// }
+///
+/// let t = Theme::saola();
+/// let _field: iced::Element<'_, Msg> = widget::search_field(
+///     &t,
+///     Surface::Paper,
+///     Icon::Search,
+///     "Filter files",
+///     "report",
+///     Msg::Query,
+///     Msg::ClearQuery,
+///     iced::widget::Id::new("filter"),
+/// );
+/// ```
+#[allow(clippy::too_many_arguments)]
+pub fn search_field<'a, M: Clone + 'a>(
+    t: &Theme,
+    s: Surface,
+    glyph: Icon,
+    placeholder: &str,
+    value: &str,
+    on_input: impl Fn(String) -> M + 'a,
+    on_clear: M,
+    id: iced::widget::Id,
+) -> Element<'a, M> {
+    search_field_inner(
+        t,
+        s,
+        glyph,
+        placeholder,
+        value,
+        Some(on_input),
+        Some(on_clear),
+        Some(id),
+    )
+}
+
+/// The disabled [`search_field`]: the same pill with no `on_input` (iced
+/// reports `Status::Disabled`), dimmed glyph and text, the resting fill
+/// kept ([`style::text_input::search`]'s no-jump rule), and **no clear
+/// button** — a field you cannot edit has nothing to clear.
+pub fn search_field_disabled<'a, M: Clone + 'a>(
+    t: &Theme,
+    s: Surface,
+    glyph: Icon,
+    placeholder: &str,
+    value: &str,
+) -> Element<'a, M> {
+    search_field_inner(
+        t,
+        s,
+        glyph,
+        placeholder,
+        value,
+        None::<fn(String) -> M>,
+        None,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_field_inner<'a, M: Clone + 'a>(
+    t: &Theme,
+    s: Surface,
+    glyph: Icon,
+    placeholder: &str,
+    value: &str,
+    on_input: Option<impl Fn(String) -> M + 'a>,
+    on_clear: Option<M>,
+    id: Option<iced::widget::Id>,
+) -> Element<'a, M> {
+    let on = *t.on(s);
+    let enabled = on_input.is_some();
+    let height = t.sizes.list_row;
+    let ring = t.sizes.ring;
+    let icon_size = t.sizes.icon_row;
+    let size = t.typography.size.body;
+    let line_height = iced::widget::text::LineHeight::default();
+    let vertical = (height - line_height.to_absolute(size.into()).0) / 2.0;
+
+    // Left: where the glyph ends plus the glyph/label gap. Right: the
+    // pill's end padding, or — with a clear button — that button's width.
+    let left = t.paddings.pill_button[1] + icon_size + t.sizes.pill_gap;
+    // The clear button is a circle inset by the ring so its hover fill
+    // never paints over the focus ring.
+    let clear_size = height - 2.0 * ring;
+    let clear = on_clear.filter(|_| enabled && !value.is_empty());
+    let right = if clear.is_some() {
+        ring + clear_size + t.sizes.pill_gap
+    } else {
+        t.paddings.pill_button[1]
+    };
+
+    let mut input = text_input(placeholder, value)
+        .font(ui_font(t))
+        .size(size)
+        .line_height(line_height)
+        .padding(iced::Padding {
+            top: vertical,
+            right,
+            bottom: vertical,
+            left,
+        })
+        .width(Fill)
+        .style(style::text_input::search(t, s));
+    if let Some(on_input) = on_input {
+        input = input.on_input(on_input);
+    }
+    if let Some(id) = id {
+        input = input.id(id);
+    }
+
+    let tint = if enabled { on.secondary } else { on.disabled }.into_iced();
+    let glyph_layer = container(icon(glyph, icon_size, tint))
+        .padding(iced::Padding::ZERO.left(t.paddings.pill_button[1]))
+        .width(Fill)
+        .height(Fill)
+        .align_y(Center);
+
+    let mut layers = stack![input, glyph_layer].height(height);
+    if let Some(on_clear) = clear {
+        let button_padding = (clear_size - icon_size) / 2.0;
+        let clear_button = button(centered(icon(Icon::X, icon_size, tint)))
+            .height(Fill)
+            .padding([0.0, button_padding])
+            .style(style::button::bare(t, s))
+            .on_press(on_clear);
+        layers = layers.push(
+            container(clear_button)
+                .padding(ring)
+                .width(Fill)
+                .height(Fill)
+                .align_x(iced::alignment::Horizontal::Right),
+        );
+    }
+    layers.into()
 }
 
 // ---------------------------------------------------------------------------
