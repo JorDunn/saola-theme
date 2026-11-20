@@ -74,6 +74,31 @@ pub fn window(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     }
 }
 
+/// The window status bar's band: no fill, no shadow (it is ambient chrome
+/// on the window's own surface, not a raised [`card`]), with the bottom
+/// corners rounded to the window's *inner* radius so a clipped child can't
+/// poke out of the window corner. The window paints `window_border` around
+/// its edge, so the inner radius is `radii.window - window_border`
+/// (floored at 0); the top corners stay square because the band's top edge
+/// is a hairline.
+pub fn status_bar(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
+    let text = t.on(s).tertiary.into_iced();
+    let radius = status_bar_corner_radius(t);
+    move |_| Style {
+        text_color: Some(text),
+        border: Border {
+            radius: iced::border::bottom(radius),
+            ..Border::default()
+        },
+        ..Style::default()
+    }
+}
+
+/// The bottom-corner radius [`status_bar`] uses; split out so it is testable.
+pub(crate) fn status_bar_corner_radius(t: &Theme) -> f32 {
+    (t.radii.window - t.sizes.window_border).max(0.0)
+}
+
 /// A card at the card radius. On ink it is a solid ivory card (ink text,
 /// popover shadow — a notification card floating on the shell); on paper it
 /// is a subtle ink-fill inset of the window (no shadow).
@@ -558,5 +583,23 @@ pub fn notification_card_urgent(t: &Theme, alpha: f32) -> impl Fn(&iced::Theme) 
         border: ring,
         shadow,
         ..surface(ink, text, radius)
+    }
+}
+
+#[cfg(test)]
+mod status_bar_tests {
+    use super::*;
+
+    #[test]
+    fn status_bar_rounds_only_the_bottom_corners_to_the_inner_window_radius() {
+        let t = Theme::saola();
+        let style = status_bar(&t, Surface::Paper)(&iced::Theme::Dark);
+        let r = t.radii.window - t.sizes.window_border;
+        assert_eq!(style.border.radius.top_left, 0.0);
+        assert_eq!(style.border.radius.top_right, 0.0);
+        assert_eq!(style.border.radius.bottom_left, r);
+        assert_eq!(style.border.radius.bottom_right, r);
+        assert!(style.background.is_none());
+        assert_eq!(style.shadow, iced::Shadow::default());
     }
 }
