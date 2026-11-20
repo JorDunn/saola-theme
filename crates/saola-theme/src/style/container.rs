@@ -75,12 +75,13 @@ pub fn window(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
 }
 
 /// The window status bar's band: no fill, no shadow (it is ambient chrome
-/// on the window's own surface, not a raised [`card`]), with the bottom
-/// corners rounded to the window's *inner* radius so a clipped child can't
-/// poke out of the window corner. The window paints `window_border` around
-/// its edge, so the inner radius is `radii.window - window_border`
-/// (floored at 0); the top corners stay square because the band's top edge
-/// is a hairline.
+/// on the window's own surface, not a raised [`card`]). It paints nothing
+/// itself; the style carries the window's *inner* bottom radius
+/// (`radii.window - window_border`, floored at 0) so a consumer that gives
+/// the band a fill gets corners matching the window. Top corners stay
+/// square because the band's top edge is a hairline. This is not clipping:
+/// iced 0.14's `clip` is rectangular, so content avoids the corners via the
+/// band's horizontal padding instead.
 pub fn status_bar(t: &Theme, s: Surface) -> impl Fn(&iced::Theme) -> Style + Clone {
     let text = t.on(s).tertiary.into_iced();
     let radius = status_bar_corner_radius(t);
@@ -594,7 +595,8 @@ mod status_bar_tests {
     fn status_bar_rounds_only_the_bottom_corners_to_the_inner_window_radius() {
         let t = Theme::saola();
         let style = status_bar(&t, Surface::Paper)(&iced::Theme::Dark);
-        let r = t.radii.window - t.sizes.window_border;
+        // Window radius 24 minus the 2 px window border.
+        let r = 22.0;
         assert_eq!(style.border.radius.top_left, 0.0);
         assert_eq!(style.border.radius.top_right, 0.0);
         assert_eq!(style.border.radius.bottom_left, r);

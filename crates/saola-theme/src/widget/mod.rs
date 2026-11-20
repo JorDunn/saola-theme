@@ -316,9 +316,16 @@ pub fn footer_strip<'a, M: 'a>(
 /// it must not read as a notification. Style the slots with
 /// [`text::meta`] (metadata size, tertiary role) and [`capacity_meter`].
 ///
-/// Bottom corners follow the window: the band's border radius is
-/// `radii.window - sizes.window_border` (the window's inner radius) and the
-/// band clips its content to it ([`style::container::status_bar`]).
+/// The band paints nothing itself, so there is no visible corner to round.
+/// Its style carries the window's inner bottom radius
+/// (`radii.window - sizes.window_border`) so a consumer that gives the band
+/// a fill gets matching corners. Content stays clear of the corners through
+/// the band's horizontal padding (`sizes.popover_padding / 2`, 10 px) plus
+/// vertical centering: with the saola tokens (22 px inner radius) the arc
+/// only reaches 10 px inside the edge within about 4 px of the bottom, which
+/// vertically centered metadata text never gets near. `.clip(true)` is only
+/// rectangular overflow clipping, so over-long `start`/`end` content can't
+/// spill out of the band; it does not follow the rounded corners.
 ///
 /// **Coexisting with [`footer_strip`]:** both occupy the same
 /// `sizes.ops_strip` band, so a transient strip *replaces* the status bar
@@ -356,6 +363,7 @@ pub fn status_bar<'a, M: 'a>(
     .height(t.sizes.ops_strip - t.sizes.hairline)
     .padding([0.0, t.sizes.popover_padding / 2.0])
     .align_y(Center)
+    // Rectangular overflow clip only (see the docs above).
     .clip(true);
     column![hairline(t, s), band].width(Fill).into()
 }
