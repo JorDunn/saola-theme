@@ -2002,10 +2002,73 @@ impl Gallery {
             captioned(name.to_owned(), glyphs)
         };
 
+        // The saola-files parity-backlog glyphs, wrapped into rows of 14 so
+        // they fit the page, at the two sizes menu rows and list rows use.
+        const BACKLOG: [Icon; 41] = [
+            Icon::Plus,
+            Icon::Columns2,
+            Icon::LayoutList,
+            Icon::ZoomIn,
+            Icon::ZoomOut,
+            Icon::AppWindow,
+            Icon::Funnel,
+            Icon::Search,
+            Icon::TextSearch,
+            Icon::ListChecks,
+            Icon::ArrowLeftRight,
+            Icon::Regex,
+            Icon::ListTodo,
+            Icon::CopyPlus,
+            Icon::LayoutTemplate,
+            Icon::Hash,
+            Icon::ClipboardCopy,
+            Icon::Zap,
+            Icon::ArchiveRestore,
+            Icon::BookmarkPlus,
+            Icon::BookmarkMinus,
+            Icon::ArrowDown,
+            Icon::Eject,
+            Icon::LockOpen,
+            Icon::History,
+            Icon::Star,
+            Icon::StarOff,
+            Icon::Tag,
+            Icon::Tags,
+            Icon::Move,
+            Icon::PanelRight,
+            Icon::FolderTree,
+            Icon::ChevronDown,
+            Icon::PackageOpen,
+            Icon::Package,
+            Icon::SquareTerminal,
+            Icon::Settings,
+            Icon::Keyboard,
+            Icon::Network,
+            Icon::Smartphone,
+            Icon::Shield,
+        ];
+        let backlog = |name: &str, size: f32| {
+            let rows = BACKLOG.chunks(14).enumerate().map(|(i, chunk)| {
+                let glyphs = chunk
+                    .iter()
+                    .map(|kind| icon(*kind, size, tint).into())
+                    .collect();
+                let label = if i == 0 {
+                    format!("{name} · {size:.0}px")
+                } else {
+                    String::new()
+                };
+                captioned(label, glyphs).into()
+            });
+            column(rows).spacing(6)
+        };
+
         column![
             strip("icon_bar", t.sizes.icon_bar),
             strip("icon_row", t.sizes.icon_row),
             strip("icon_menu", t.sizes.icon_menu),
+            backlog("backlog icon_row", t.sizes.icon_row),
+            backlog("backlog icon_menu", t.sizes.icon_menu),
             // Each ladder climbs its levels left to right, ending on the
             // state that overrides the level (charging, mute, offline-first
             // for Wi-Fi).
