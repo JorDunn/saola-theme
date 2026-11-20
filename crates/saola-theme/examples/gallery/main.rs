@@ -36,6 +36,15 @@ use saola_theme::{
 /// The options shown in the Widgets page's pick list demo.
 const PICK_LIST_OPTIONS: &[&str] = &["Ink", "Paper", "Terracotta"];
 
+/// One `Id` per surface specimen, so "clear" refocuses the field that was
+/// clicked rather than whichever shares the id.
+fn search_id(surface: Surface) -> iced::widget::Id {
+    iced::widget::Id::new(match surface {
+        Surface::Ink => "gallery-search-ink",
+        Surface::Paper => "gallery-search-paper",
+    })
+}
+
 fn main() -> iced::Result {
     iced::application(Gallery::new, Gallery::update, Gallery::view)
         .theme(Gallery::theme)
@@ -60,6 +69,10 @@ enum Message {
     /// Buttons need an `on_press` to be enabled; the demo ones do nothing.
     DemoPressed,
     TextInputChanged(String),
+    /// The search-field specimens share one query; the clear button also
+    /// refocuses the surface's own field via its `Id`.
+    SearchChanged(String),
+    SearchCleared(Surface),
     /// The Stage 17 text-editor specimen: every edit arrives as a
     /// `text_editor::Action` the update loop replays onto the shared
     /// `Content` (the widget owns no text of its own).
@@ -99,6 +112,8 @@ struct Gallery {
     /// toggler.
     surface: Surface,
     text_input_value: String,
+    /// The `widget::search_field` specimens' shared query.
+    search_value: String,
     checkbox_checked: bool,
     toggler_toggled: bool,
     slider_value: f32,
@@ -133,6 +148,7 @@ impl Gallery {
             page: Page::Widgets,
             surface: Surface::Ink,
             text_input_value: String::new(),
+            search_value: String::new(),
             checkbox_checked: true,
             toggler_toggled: true,
             slider_value: 40.0,
@@ -155,6 +171,11 @@ impl Gallery {
             Message::PageSelected(page) => self.page = page,
             Message::DemoPressed => {}
             Message::TextInputChanged(value) => self.text_input_value = value,
+            Message::SearchChanged(value) => self.search_value = value,
+            Message::SearchCleared(surface) => {
+                self.search_value.clear();
+                return iced::widget::operation::focus(search_id(surface));
+            }
             Message::EditorAction(action) => self.editor_content.perform(action),
             Message::CheckboxToggled(checked) => self.checkbox_checked = checked,
             Message::TogglerToggled(toggled) => self.toggler_toggled = toggled,
@@ -847,6 +868,25 @@ impl Gallery {
         ]
         .spacing(12);
 
+        // `widget::search_field`: live (type to see the clear button appear,
+        // click it to clear and refocus; click in for the full-pill ring),
+        // a field with fixed text, and the disabled field.
+        let search_states = column![
+            widget::search_field(
+                t,
+                s,
+                Icon::Search,
+                "Search files",
+                &self.search_value,
+                Message::SearchChanged,
+                Message::SearchCleared(s),
+                search_id(s),
+            ),
+            widget::search_field_disabled(t, s, Icon::Funnel, "Filter", ""),
+            widget::search_field_disabled(t, s, Icon::Funnel, "Filter", "report.pdf"),
+        ]
+        .spacing(12);
+
         // Radio group: 9d's Ascending/Descending rows.
         let radios = row![
             radio(
@@ -974,6 +1014,7 @@ impl Gallery {
         column![
             text_input_states,
             prompt_states,
+            search_states,
             radios,
             segmented,
             urgent_card,

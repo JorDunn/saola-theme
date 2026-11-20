@@ -357,3 +357,105 @@ pub fn prompt_rejected(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -
         }
     }
 }
+
+/// The search field's style (style guide §6 "Text field": 999 px pill,
+/// subtle fill, 2 px terracotta focus ring) — the chrome of
+/// [`crate::widget::search_field`], where the `text_input` spans the whole
+/// pill (glyph and clear button are layered over its padding), so the ring
+/// drawn here surrounds the entire composite.
+///
+/// Unlike [`prompt`], hover is a *fill step*, not a hairline: the surface's
+/// `fill_subtle` at rest, `fill` while hovered (and while focused *and*
+/// hovered), per "hover/press move through `fill_subtle → fill →
+/// fill_strong`". The fills are translucent, so iced blends them over the
+/// surface. Focus draws the `sizes.ring` accent ring and nothing else.
+/// `Status::Disabled` keeps the resting fill (the [`prompt`] no-jump rule)
+/// and dims the text.
+///
+/// iced 0.14 draws the caret in `Style::value`, so the caret is the value
+/// colour (`on(s).primary`), not terracotta — a terracotta caret would
+/// mean terracotta typed text too.
+pub fn search(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
+    let radius = t.radii.pill;
+    let on = *t.on(s);
+    let ring_width = t.sizes.ring;
+    let accent = t.palette.accent.into_iced();
+    let rest_bg = Background::Color(on.fill_subtle.into_iced());
+    let hover_bg = Background::Color(on.fill.into_iced());
+    let value = on.primary.into_iced();
+    let icon = on.secondary.into_iced();
+    let placeholder = on.quaternary.into_iced();
+    let disabled_text = on.disabled.into_iced();
+
+    move |_, status| {
+        let border = |color: Color, width: f32| Border {
+            color,
+            width,
+            radius: radius.into(),
+        };
+        let style = |background: Background, border: Border| Style {
+            background,
+            border,
+            icon,
+            placeholder,
+            value,
+            selection: accent,
+        };
+        match status {
+            Status::Active => style(rest_bg, border(Color::TRANSPARENT, 0.0)),
+            Status::Hovered => style(hover_bg, border(Color::TRANSPARENT, 0.0)),
+            Status::Focused { is_hovered } => style(
+                if is_hovered { hover_bg } else { rest_bg },
+                border(accent, ring_width),
+            ),
+            Status::Disabled => Style {
+                icon: disabled_text,
+                placeholder: disabled_text,
+                value: disabled_text,
+                ..style(rest_bg, border(Color::TRANSPARENT, 0.0))
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bg(style: &Style) -> Color {
+        match style.background {
+            Background::Color(c) => c,
+            other => panic!("expected a flat color, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn search_hover_steps_the_fill_and_focus_draws_the_ring() {
+        let t = Theme::saola();
+        for s in [Surface::Ink, Surface::Paper] {
+            let f = search(&t, s);
+            let th = iced::Theme::Dark;
+            let rest = f(&th, Status::Active);
+            let hover = f(&th, Status::Hovered);
+            let focus = f(&th, Status::Focused { is_hovered: false });
+            let focus_hover = f(&th, Status::Focused { is_hovered: true });
+            let disabled = f(&th, Status::Disabled);
+
+            assert_eq!(bg(&rest), t.on(s).fill_subtle.into_iced());
+            assert_eq!(bg(&hover), t.on(s).fill.into_iced());
+            assert_ne!(bg(&rest), bg(&hover));
+            assert_eq!(rest.border.width, 0.0);
+            assert_eq!(hover.border.width, 0.0);
+
+            assert_eq!(focus.border.width, t.sizes.ring);
+            assert_eq!(focus.border.color, t.palette.accent.into_iced());
+            assert_eq!(bg(&focus), bg(&rest));
+            assert_eq!(bg(&focus_hover), bg(&hover));
+
+            // No-jump disabled: same fill, no ring, dimmed text.
+            assert_eq!(bg(&disabled), bg(&rest));
+            assert_eq!(disabled.border.width, 0.0);
+            assert_eq!(disabled.value, t.on(s).disabled.into_iced());
+        }
+    }
+}
