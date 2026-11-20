@@ -1890,16 +1890,18 @@ impl Gallery {
         let empty_row = widget::empty_state_row(t, s, "No notifications");
 
         // `footer_strip`: the fixed-height card band a window docks its
-        // transient chrome into (a progress readout, an undo toast).
+        // transient chrome into (a progress readout, an undo toast). The
+        // card is paper-coloured on ink and a paper inset on paper, so its
+        // content is always built for `Surface::Paper`, not the page's `s`.
         let footer = widget::footer_strip(
             t,
             s,
             row![
-                widget::text::secondary(t, s, "Moving 3 items…"),
+                widget::text::secondary(t, Surface::Paper, "Moving 3 items…"),
                 Space::new().width(Fill),
                 widget::pill_button(
                     t,
-                    s,
+                    Surface::Paper,
                     Chrome::Shell,
                     "Undo",
                     Some(Message::DemoPressed),

@@ -295,6 +295,17 @@ pub fn section_label<'a, M: 'a>(t: &Theme, s: Surface, label: &'a str) -> Elemen
 /// `dialogs::undo_toast` built identical strips and documented that the two
 /// "occupy the identical footer band and must read as one continuous piece
 /// of chrome when one replaces the other".
+///
+/// **Content surface:** `s` picks the card's style; the content must always
+/// be built for [`Surface::Paper`], whatever `s` is. [`style::container::card`]
+/// is an ivory card on `Surface::Ink` and a paper inset on `Surface::Paper`,
+/// and its text is `on_paper` in both, so ink-surface text or an ink-surface
+/// pill on it is light on light and invisible.
+///
+/// ```ignore
+/// // Page surface `s` may be ink; the strip's content is still paper.
+/// widget::footer_strip(&t, s, widget::text::secondary(&t, Surface::Paper, "Moving 3 items…"))
+/// ```
 pub fn footer_strip<'a, M: 'a>(
     t: &Theme,
     s: Surface,
