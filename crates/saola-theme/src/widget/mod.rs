@@ -44,8 +44,8 @@ use iced::widget::scrollable::{Anchor, Direction, Scrollbar};
 use iced::widget::text as text_widget;
 use iced::widget::text::IntoFragment;
 use iced::widget::{
-    button, container, progress_bar, rule, scrollable, Column, Container, ProgressBar, Row, Rule,
-    Space,
+    button, column, container, progress_bar, row, rule, scrollable, Column, Container, ProgressBar,
+    Row, Rule, Space,
 };
 use iced::{Center, Element, Fill};
 use saola_tokens::{Chrome, Surface, Theme};
@@ -125,6 +125,37 @@ pub fn progress_rule<'a>(t: &Theme, s: Surface, value: f32) -> ProgressBar<'a> {
         .length(Fill)
         .girth(t.sizes.progress_girth)
         .style(style::progress::bar(t, s))
+}
+
+/// Clamp a used-capacity fraction to `0.0..=1.0`; `NaN` reads as empty.
+fn clamp_fraction(used_fraction: f32) -> f32 {
+    if used_fraction.is_nan() {
+        0.0
+    } else {
+        used_fraction.clamp(0.0, 1.0)
+    }
+}
+
+/// A static capacity meter (disk usage, quota): the [`progress_rule`] shape
+/// at `sizes.progress_girth`, but with a **neutral** fill
+/// ([`style::progress::meter`]) — terracotta means on/selected/live, and a
+/// capacity readout is none of those (style guide §1). Not animated.
+///
+/// `used_fraction` is clamped to `0.0..=1.0`; `NaN` renders empty. The bar
+/// fills the available width, so give it a fixed-width container when it
+/// sits in a [`status_bar`] slot.
+///
+/// ```no_run
+/// use saola_theme::{widget, Surface, Theme};
+///
+/// let t = Theme::saola();
+/// let _meter: iced::widget::ProgressBar<'_> = widget::capacity_meter(&t, Surface::Paper, 0.62);
+/// ```
+pub fn capacity_meter<'a>(t: &Theme, s: Surface, used_fraction: f32) -> ProgressBar<'a> {
+    progress_bar(0.0..=1.0, clamp_fraction(used_fraction))
+        .length(Fill)
+        .girth(t.sizes.progress_girth)
+        .style(style::progress::meter(t, s))
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +307,65 @@ pub fn footer_strip<'a, M: 'a>(
         .padding([0.0, t.sizes.popover_padding / 2.0])
         .align_y(Center)
         .into()
+}
+
+/// The always-present status band at the bottom of a window (item count,
+/// selection size, free space): `start` left-aligned, `end` right-aligned,
+/// full width, `sizes.ops_strip` tall in total, with a hairline top edge in
+/// the surface's `divider` role. Ambient chrome: no fill, no card raise, so
+/// it must not read as a notification. Style the slots with
+/// [`text::meta`] (metadata size, tertiary role) and [`capacity_meter`].
+///
+/// The band paints nothing itself, so there is no visible corner to round.
+/// Its style carries the window's inner bottom radius
+/// (`radii.window - sizes.window_border`) so a consumer that gives the band
+/// a fill gets matching corners. Content stays clear of the corners through
+/// the band's horizontal padding (`sizes.popover_padding / 2`, 10 px) plus
+/// vertical centering: with the saola tokens (22 px inner radius) the arc
+/// only reaches 10 px inside the edge within about 4 px of the bottom, which
+/// vertically centered metadata text never gets near. `.clip(true)` is only
+/// rectangular overflow clipping, so over-long `start`/`end` content can't
+/// spill out of the band; it does not follow the rounded corners.
+///
+/// **Coexisting with [`footer_strip`]:** both occupy the same
+/// `sizes.ops_strip` band, so a transient strip *replaces* the status bar
+/// while it is showing (swap one for the other in the same slot) rather
+/// than stacking above it. Stacking would double the footer height and put
+/// a raised card directly on top of ambient chrome.
+///
+/// ```no_run
+/// use saola_theme::{widget, Surface, Theme};
+///
+/// let t = Theme::saola();
+/// let s = Surface::Paper;
+/// let _bar: iced::Element<'_, ()> = widget::status_bar(
+///     &t,
+///     s,
+///     widget::text::meta(&t, s, "12 items, 3 selected"),
+///     widget::text::meta(&t, s, "48 GB free"),
+/// );
+/// ```
+pub fn status_bar<'a, M: 'a>(
+    t: &Theme,
+    s: Surface,
+    start: impl Into<Element<'a, M>>,
+    end: impl Into<Element<'a, M>>,
+) -> Element<'a, M> {
+    // The hairline is part of the total height, so the band proper is one
+    // hairline shorter.
+    let band = container(
+        row![start.into(), Space::new().width(Fill), end.into()]
+            .align_y(Center)
+            .width(Fill),
+    )
+    .style(style::container::status_bar(t, s))
+    .width(Fill)
+    .height(t.sizes.ops_strip - t.sizes.hairline)
+    .padding([0.0, t.sizes.popover_padding / 2.0])
+    .align_y(Center)
+    // Rectangular overflow clip only (see the docs above).
+    .clip(true);
+    column![hairline(t, s), band].width(Fill).into()
 }
 
 // ---------------------------------------------------------------------------
@@ -1074,6 +1164,7 @@ mod tests {
         let _: Element<'_, ()> = empty_state_row(&t, s, "No notifications");
         let _: Element<'_, ()> = section_label(&t, s, "PLACES");
         let _: Element<'_, ()> = footer_strip(&t, s, hairline(&t, s));
+        let _: Element<'_, ()> = status_bar(&t, s, hairline(&t, s), capacity_meter(&t, s, 0.5));
         let _: Element<'_, ()> = swatch(24.0, 8.0, style::container::badge(&t));
         let _: Element<'_, ()> = dot(6.0, style::container::badge(&t));
         let _: Element<'_, ()> = pill_button(&t, s, Chrome::Shell, "Save", Some(()), true);
@@ -1322,5 +1413,15 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn clamp_fraction_is_total() {
+        assert_eq!(clamp_fraction(-0.5), 0.0);
+        assert_eq!(clamp_fraction(0.25), 0.25);
+        assert_eq!(clamp_fraction(7.0), 1.0);
+        assert_eq!(clamp_fraction(f32::NAN), 0.0);
+        assert_eq!(clamp_fraction(f32::INFINITY), 1.0);
+        assert_eq!(clamp_fraction(f32::NEG_INFINITY), 0.0);
     }
 }

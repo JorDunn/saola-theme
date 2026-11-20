@@ -54,6 +54,17 @@ pub fn label<'a>(t: &Theme, s: Surface, content: impl IntoFragment<'a>) -> Text<
         .color(t.on(s).tertiary.into_iced())
 }
 
+/// Metadata: `size.meta` regular UI text in the `tertiary` role (style guide
+/// §3 "Metadata Sans 400 · 11.5–12px") — counts, sizes and readouts in
+/// ambient chrome such as [`crate::widget::status_bar`]. IBM Plex figures
+/// are already tabular, so counting values need no extra feature.
+pub fn meta<'a>(t: &Theme, s: Surface, content: impl IntoFragment<'a>) -> Text<'a> {
+    text_widget(content)
+        .size(t.typography.size.meta)
+        .font(ui_font_regular(t))
+        .color(t.on(s).tertiary.into_iced())
+}
+
 /// A hint: `size.secondary` regular UI text in the placeholder-level
 /// `quaternary` role — inline guidance quiet enough to ignore
 /// (saola-lockscreen's input placeholder is the reference use of
@@ -97,6 +108,7 @@ mod tests {
         let _: Text<'_> = secondary(&t, Surface::Paper, String::from("owned"));
         let _: Text<'_> = label(&t, Surface::Paper, format!("{:>3}%", 87));
         let _: Text<'_> = hint(&t, Surface::Ink, "Press Enter");
+        let _: Text<'_> = meta(&t, Surface::Paper, "12 items");
         let _: Text<'_> = error(&t, Surface::Ink, "That password wasn't right");
     }
 }

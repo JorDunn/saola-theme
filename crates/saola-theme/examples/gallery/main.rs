@@ -1869,6 +1869,21 @@ impl Gallery {
             .align_y(iced::Center),
         );
 
+        // `status_bar`: the ambient, always-present band (hairline top, no
+        // card raise) with a neutral `capacity_meter` in the end slot. It
+        // shares `footer_strip`'s height and is replaced by it, not stacked.
+        let status_bar = widget::status_bar(
+            t,
+            s,
+            widget::text::meta(t, s, "128 items, 3 selected (4.2 MB)"),
+            row![
+                container(widget::capacity_meter(t, s, 0.62)).width(96),
+                widget::text::meta(t, s, "48 GB free"),
+            ]
+            .spacing(12)
+            .align_y(iced::Center),
+        );
+
         column![
             buttons,
             row![segmented, view_switcher].spacing(12),
@@ -1878,6 +1893,7 @@ impl Gallery {
             empty,
             empty_row,
             footer,
+            status_bar,
         ]
         .spacing(16)
         .width(Fill)
