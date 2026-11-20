@@ -52,8 +52,8 @@
 //! file manager grew independently, the greeter's power cluster and
 //! no-avatar glyphs, the file manager's parity-backlog set (tabs, split and
 //! view toggles, zoom, search and filter, selection, bookmarks, stars and
-//! tags, devices, archives, preferences), plus the two Saola marks (style guide §8 — the mark is
-//! design-system property, so its assets live here).
+//! tags, devices, archives, preferences), plus the two Saola marks (style
+//! guide §8 — the mark is design-system property, so its assets live here).
 //! App-specific brand icons (the panel's `anthropic`/`claude-code` pair)
 //! stay in the app that reports on that product — an app that needs a brand
 //! glyph keeps a tiny local icons module for it and uses this one for
@@ -259,12 +259,16 @@ pub enum Icon {
     BookmarkPlus,
     BookmarkMinus,
     ArrowDown,
+    /// Asset from lucide-static 1.76.0; the glyph is absent from 1.30.0, which
+    /// the other assets use.
     Eject,
     LockOpen,
     History,
     Star,
     StarOff,
+    /// Keeps upstream's small filled dot sub-element.
     Tag,
+    /// Keeps upstream's small filled dot sub-element.
     Tags,
     Move,
     PanelRight,
@@ -672,8 +676,10 @@ mod tests {
     /// triangle *plus* a genuinely unfillable straight-line bar — that bar
     /// keeps a real `stroke-width="2.75"` stroke and the asset keeps its
     /// root-level `fill="none"`, so it satisfies both invariants and stays
-    /// out of this list. `MarkNotch`'s dot is a filled sub-element inside an
-    /// otherwise stroked, `fill="none"`-rooted asset, so it too stays out.
+    /// out of this list. `MarkNotch`'s dot, and the small
+    /// `fill="currentColor"` dot in Lucide's `Tag` and `Tags`, are filled
+    /// sub-elements inside otherwise stroked, `fill="none"`-rooted assets, so
+    /// they too stay out.
     /// (The panel's other solids, the `anthropic`/`claude-code` brand marks,
     /// are deliberately *not* bundled here — brand assets stay with the app
     /// that reports on that product.)
@@ -711,8 +717,8 @@ mod tests {
     /// (`fill="none"`), so a future accidental solid-fill asset shows up
     /// here rather than silently passing the stroke-width test above (which
     /// only checks the attribute is *present*, not that it's meaningful on a
-    /// genuinely stroked path). `SkipForward` and `MarkNotch` pass because
-    /// their filled shapes are sub-elements under a `fill="none"` root —
+    /// genuinely stroked path). `SkipForward`, `MarkNotch`, `Tag` and `Tags`
+    /// pass because their filled shapes are sub-elements under a `fill="none"` root —
     /// see [`SOLID`]'s doc comment.
     #[test]
     fn every_stroked_asset_is_unfilled_outline_style() {
