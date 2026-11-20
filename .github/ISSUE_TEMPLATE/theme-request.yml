@@ -1,0 +1,39 @@
+name: Theme request
+description: A token, style helper, icon glyph or style-guide exception a consumer repo needs.
+labels: ["theme-request"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What is needed
+      description: >-
+        The token, style helper or glyph, and the consumer surface that uses
+        it. Name the consumer repo and the task it blocks.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Design source
+      description: >-
+        Where each value comes from — a style-guide section, a concept mockup
+        measurement, or a `design/saola-tokens.json` entry. A value with no
+        design source waits on the maintainer.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: The API the consumer expects to call, and how it should look in each state.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: >-
+        Anything that touches the binding design language (three colours,
+        surface contexts, pill shapes) or needs a new style-guide exception.

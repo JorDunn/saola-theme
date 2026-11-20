@@ -14,7 +14,26 @@ cargo run --example gallery                             # visual preview (needs 
 cargo tree -p saola-tokens -e normal                    # must show ONLY serde/toml/thiserror
 ```
 
-All four CI jobs (fmt, clippy, test, gallery build) must pass before any change is done.
+All four build jobs (fmt, clippy, test, gallery build) must pass before any change is done;
+on a PR, CI also runs `pr-title`.
+
+## Task workflow
+
+- **The board is the plan.** Work is GitHub issues on the "Saola" user Project
+  (https://github.com/users/JorDunn/projects/2): epics are milestones with sub-issues,
+  ordering is "blocked by" links. PLAN.md is retired and gitignored — don't recreate it.
+- One task = one issue = one branch `task/<issue>-<slug>` = one PR. Never push to `main`;
+  PRs land by squash merge only.
+- The PR title is the Conventional Commit: it becomes the squash commit and the changelog
+  line, and CI's `pr-title` check enforces it. The body follows the PR template; a
+  `BREAKING CHANGE:` footer goes in the PR body.
+- **Consumer needs arrive as `theme-request` issues.** A request is input, not a spec —
+  check it against the design language below before building. Its PR says `Refs #<n>`,
+  not `Closes #<n>`: the issue is closed only when the release tag that ships it exists,
+  because that tag is what unblocks the consumer.
+- The dispatcher squash-merges the release-plz `chore: release` PR once its checks are
+  green and `main` holds an unreleased theme-request change.
+- Dispatching, review, merge and release mechanics: `docs/DISPATCH.md`.
 
 ## Architecture
 
@@ -97,8 +116,9 @@ Target: **stable iced 0.14** (`iced_layershell` 0.19.x tracks it). No zbus in th
 
 ## Releases
 
-- **Commit messages must follow Conventional Commits** (`feat:`, `fix:`, `feat!:` for
-  breaking, etc.) — release-plz derives each crate's semver bump and changelog from them.
+- **PR titles must follow Conventional Commits** (`feat:`, `fix:`, `feat!:` for
+  breaking, etc.) — the title becomes the squash commit, and release-plz derives each
+  crate's semver bump and changelog from it.
   Pre-1.0, a breaking change bumps the minor version (Cargo semantics), and so does a
   plain `feat:` (`features_always_increment_minor` in `release-plz.toml`).
 - Never bump versions in Cargo.toml or edit CHANGELOG.md files by hand — the release-plz
@@ -109,7 +129,7 @@ Target: **stable iced 0.14** (`iced_layershell` 0.19.x tracks it). No zbus in th
   must carry a `version` alongside its `path` (a new exporter crate depending on
   `saola-tokens` by path alone would poison the next tag and break every release-pr run
   after it; see commit 957ee68).
-- Commits that shouldn't appear in a changelog use `chore:`/`ci:`/`docs:`/`test:` types.
+- Changes that shouldn't appear in a changelog use `chore:`/`ci:`/`docs:`/`test:` types.
 
 ## Boundaries
 
