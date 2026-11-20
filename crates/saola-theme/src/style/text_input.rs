@@ -1,5 +1,5 @@
-//! Text input styles: [`rest`], [`rejected`], [`prompt`], and
-//! [`prompt_rejected`].
+//! Text input styles: [`rest`], [`rejected`], [`prompt`],
+//! [`prompt_rejected`], and [`search`].
 //!
 //! A text input is a control at rest, so it follows the same "ivory on ink /
 //! fill on paper" shape as [`crate::style::button::rest`]: a solid ivory
@@ -372,9 +372,9 @@ pub fn prompt_rejected(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -
 /// `Status::Disabled` keeps the resting fill (the [`prompt`] no-jump rule)
 /// and dims the text.
 ///
-/// iced 0.14 draws the caret in `Style::value`, so the caret is the value
-/// colour (`on(s).primary`), not terracotta — a terracotta caret would
-/// mean terracotta typed text too.
+/// Applies to every text-input style in this crate, not just this one: iced
+/// 0.14 draws the caret in `Style::value`, so style guide §6's terracotta
+/// caret cannot be met by any of them (it would make typed text terracotta).
 pub fn search(t: &Theme, s: Surface) -> impl Fn(&iced::Theme, Status) -> Style + Clone {
     let radius = t.radii.pill;
     let on = *t.on(s);

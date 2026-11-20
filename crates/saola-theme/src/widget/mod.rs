@@ -1080,7 +1080,7 @@ fn search_field_inner<'a, M: Clone + 'a>(
     let clear_size = height - 2.0 * ring;
     let clear = on_clear.filter(|_| enabled && !value.is_empty());
     let right = if clear.is_some() {
-        ring + clear_size
+        ring + clear_size + t.sizes.pill_gap
     } else {
         t.paddings.pill_button[1]
     };
